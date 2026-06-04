@@ -12,18 +12,13 @@ ROBOT_SERVICES = {
 }
 
 
-class FleetManagerNode(Node):
+class RoscueManagerNode(Node):
     def __init__(self):
-        super().__init__('fleet_manager')
+        super().__init__('roscue_manager')
         self.clients = {}
         for robot_name, service_name in ROBOT_SERVICES.items():
-            self.clients[robot_name] = self.create_client(
-                TaskCommand,
-                service_name
-            )
-        self.get_logger().info(
-            f'FleetManager ready. robots={list(ROBOT_SERVICES.keys())}'
-        )
+            self.clients[robot_name] = self.create_client(TaskCommand, service_name)
+        self.get_logger().info(f'RoscueManager ready. robots={list(ROBOT_SERVICES.keys())}')
 
     def send_command(self, robot_name, task_name, action, params=None, timeout_sec=5.0):
         if robot_name not in self.clients:
@@ -55,14 +50,14 @@ class FleetManagerNode(Node):
 
 def main():
     rclpy.init()
-    node = FleetManagerNode()
+    node = RoscueManagerNode()
 
     # 예시: robot1의 camera_ai 시작
     ok, msg = node.send_command(
-        robot_name='robot1',
-        task_name='camera_ai',
-        action='start',
-        params={'model': 'yolo'}
+        robot_name='waffle1',
+        task_name='camera_position',
+        action='start',         # action: start, stop, restart, status
+        params={''}
     )
     node.get_logger().info(f'result: {ok}, {msg}')
 
