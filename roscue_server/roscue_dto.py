@@ -1,7 +1,7 @@
 from dataclasses import dataclass
+from enum import Enum
 
-
-class TaskAction(str, str):
+class TaskAction(str, Enum):
     START = "start"
     STOP = "stop"
     RESTART = "restart"
