@@ -16,7 +16,9 @@ ROBOT_SERVICES = {
 class RoscueMainServerNode(Node):
     def __init__(self):
         super().__init__('roscue_main_server')
-        self.robot_robot_clients = {}
+        self.robot_clients = {}
+        self.robot_services = {}
+        
         for robot_name, service_name in ROBOT_SERVICES.items():
             self.robot_clients[robot_name] = self.create_client(TaskCommandSrv, service_name)
 

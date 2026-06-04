@@ -4,7 +4,7 @@ import threading
 from flask import Flask, jsonify, request, render_template_string
 import rclpy
 from rclpy.node import Node
-from roscue_interface.srv import TaskCommand
+from roscue_interface.srv import TaskCommandSrv
 from roscue_dto import RoscueTaskDTO, TaskAction
 
 app = Flask(__name__)
@@ -56,10 +56,6 @@ HTML_TEMPLATE = """
         </select>
     </div>
 
-    <div class="form-group">
-        <label for="params">파라미터 (JSON 형식)</label>
-        <textarea id="params">{"angle": 90}</textarea>
-    </div>
 
     <button onclick="sendCommand()">명령 보내기 🚀</button>
 
@@ -75,26 +71,14 @@ async function sendCommand() {
     const robot_name = document.getElementById('robot_name').value;
     const task_name = document.getElementById('task_name').value;
     const action = document.getElementById('action').value;
-    const paramsText = document.getElementById('params').value;
 
-    let params = {};
-    try {
-        if (paramsText.trim() !== "") {
-            params = JSON.parse(paramsText);
-        }
-    } catch (e) {
-        resultDiv.className = 'fail';
-        resultDiv.innerText = "❌ 파라미터가 올바른 JSON 형식이 아닙니다.";
-        resultDiv.style.display = 'block';
-        return;
-    }
 
     // 2. 백엔드 API에 POST 요청 날리기
     try {
         const response = await fetch('/api/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ robot_name, task_name, action, params })
+            body: JSON.stringify({ robot_name, task_name, action })
         });
 
         const resData = await response.json();
@@ -124,17 +108,17 @@ async function sendCommand() {
 class FlaskRosClient(Node):
     def __init__(self):
         super().__init__("flask_ros_client")
-        self.cli = self.create_client(TaskCommand, "/fleet/task_command")
+        self.cli = self.create_client(TaskCommandSrv, "/fleet/task_command")
 
-    async def call_fleet_manager(self, dto: RoscueTaskDTO, params: dict):
+    async def call_fleet_manager(self, dto: RoscueTaskDTO):
         if not self.cli.wait_for_service(timeout_sec=3.0):
             return False, "Fleet Manager Service unavailable"
 
-        req = TaskCommand.Request()
+        req = TaskCommandSrv.Request()
         req.robot_name = dto.robot_name
         req.task_name = dto.task_name
         req.action = dto.action.value
-        req.args_json = json.dumps(params, ensure_ascii=False)
+
 
         resp = await self.cli.call_async(req)
         return resp.accepted, resp.message
@@ -162,12 +146,12 @@ def handle_http_request():
             task_name=data.get("task_name", ""),
             action=TaskAction(data.get("action", "status"))
         )
-        params = data.get("params", {})
+
     except ValueError as e:
         return jsonify({"result": "fail", "message": f"Invalid Action: {e}"}), 400
 
     future = asyncio.run_coroutine_threadsafe(
-        ros_client_node.call_fleet_manager(task_dto, params),
+        ros_client_node.call_fleet_manager(task_dto),
         ros_client_node.executor.create_task.__self__._loop
     )
 
