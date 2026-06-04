@@ -26,7 +26,7 @@ endif()
 
 # 여기다가 커스텀 메시지나 서비스 넣기
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/TaskCommand.srv"
+  "srv/TaskCommandSrv.srv"
 )
 
 ament_package()
