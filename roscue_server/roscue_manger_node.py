@@ -3,10 +3,9 @@ import json
 import rclpy
 from rclpy.node import Node
 
-from my_interfaces.srv import TaskCommand
+from roscue_interface.srv import TaskCommand
 
 
-# robot_name -> 그 로봇의 task_command 서비스 이름 (직접 하드코딩)
 ROBOT_SERVICES = {
     'robot1': '/robot1/task_command',
     'robot2': '/robot2/task_command',
