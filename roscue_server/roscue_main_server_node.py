@@ -16,9 +16,9 @@ ROBOT_SERVICES = {
 class RoscueMainServerNode(Node):
     def __init__(self):
         super().__init__('roscue_main_server')
-        self.clients = {}
+        self.robot_robot_clients = {}
         for robot_name, service_name in ROBOT_SERVICES.items():
-            self.clients[robot_name] = self.create_client(TaskCommandSrv, service_name)
+            self.robot_clients[robot_name] = self.create_client(TaskCommandSrv, service_name)
 
         # 2. 외부(Flask 등) 요청을 받을 서비스 서버 생성
         self.create_service(
@@ -30,11 +30,11 @@ class RoscueMainServerNode(Node):
         self.get_logger().info(f'roscue_main_server ready. robots={list(ROBOT_SERVICES.keys())}')
 
     def send_command(self, robot_name, task_name, action, timeout_sec=5.0):
-        if robot_name not in self.clients:
+        if robot_name not in self.robot_clients:
             self.get_logger().error(f'unknown robot: {robot_name}')
             return False, 'unknown robot'
 
-        client = self.clients[robot_name]
+        client = self.robot_clients[robot_name]
         if not client.wait_for_service(timeout_sec=2.0):
             self.get_logger().error(f'service unavailable: {robot_name}')
             return False, 'service unavailable'
@@ -74,14 +74,14 @@ class RoscueMainServerNode(Node):
         self, robot_name, task_name, action, params
     ) -> TaskResultDTO:
         """실제 개별 로봇에게 명령을 토스하는 함수"""
-        if robot_name not in self.clients:
+        if robot_name not in self.robot_clients:
             if robot_name not in self.robot_services:
                 return TaskResultDTO(False, f"Unknown robot: {robot_name}")
 
             srv_name = self.robot_services[robot_name]["task_service"]
-            self.clients[robot_name] = self.create_client(TaskCommandSrv, srv_name)
+            self.robot_clients[robot_name] = self.create_client(TaskCommandSrv, srv_name)
 
-        client = self.clients[robot_name]
+        client = self.robot_clients[robot_name]
 
         if not client.wait_for_service(timeout_sec=2.0):
             return TaskResultDTO(
