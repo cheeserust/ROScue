@@ -1,5 +1,4 @@
-import asyncio
-import json
+# flask server
 import threading
 from flask import Flask, jsonify, request, render_template_string
 import rclpy
@@ -9,7 +8,7 @@ from roscue_dto import RoscueTaskDTO, TaskAction
 
 app = Flask(__name__)
 
-# --- 웹 브라우저에 보여줄 인라인 HTML 템플릿 ---
+# --- 웹 브라우저 인라인 HTML 템플릿 (param 제거됨) ---
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ko">
@@ -22,8 +21,7 @@ HTML_TEMPLATE = """
         h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; color: #4a5568; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        textarea { height: 80px; font-family: monospace; resize: none; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
         button { width: 100%; padding: 12px; background-color: #3182ce; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         button:hover { background-color: #2b6cb0; }
         #result { margin-top: 25px; padding: 15px; border-radius: 6px; display: none; font-weight: bold; white-space: pre-wrap; }
@@ -32,20 +30,16 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-
 <div class="card">
     <h2>🤖 로봇 명령 전송기</h2>
-    
     <div class="form-group">
         <label for="robot_name">로봇 이름</label>
-        <input type="text" id="robot_name" value="waffle1" placeholder="예: waffle1, waffle2">
+        <input type="text" id="robot_name" value="waffle1">
     </div>
-
     <div class="form-group">
         <label for="task_name">작업(Task) 이름</label>
-        <input type="text" id="task_name" value="camera_position" placeholder="예: move_to, patrol">
+        <input type="text" id="task_name" value="camera_position">
     </div>
-
     <div class="form-group">
         <label for="action">액션 (Action)</label>
         <select id="action">
@@ -55,11 +49,15 @@ HTML_TEMPLATE = """
             <option value="status">STATUS (상태 확인)</option>
         </select>
     </div>
-
-
     <button onclick="sendCommand()">명령 보내기 🚀</button>
-
     <div id="result"></div>
+    <!-- 🌟 로딩바 영역 추가 -->
+    <div style="margin-top: 20px;">
+        <label>자율주행 진행률: <span id="progress-text">0%</span></label>
+        <div style="width: 100%; background-color: #e2e8f0; border-radius: 8px; overflow: hidden;">
+            <div id="progress-bar" style="width: 0%; height: 20px; background-color: #48bb78; transition: width 0.5s;"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -67,23 +65,17 @@ async function sendCommand() {
     const resultDiv = document.getElementById('result');
     resultDiv.style.display = 'none';
     
-    // 1. 입력값 가져오기
     const robot_name = document.getElementById('robot_name').value;
     const task_name = document.getElementById('task_name').value;
     const action = document.getElementById('action').value;
 
-
-    // 2. 백엔드 API에 POST 요청 날리기
     try {
         const response = await fetch('/api/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ robot_name, task_name, action })
         });
-
         const resData = await response.json();
-        
-        // 3. 화면에 결과 표시
         if (response.ok && resData.result === 'success') {
             resultDiv.className = 'success';
             resultDiv.innerText = `✅ 성공!\\n메시지: ${resData.message}`;
@@ -95,11 +87,44 @@ async function sendCommand() {
         resultDiv.className = 'fail';
         resultDiv.innerText = `🚨 통신 에러: ${error.message}`;
     }
-    
     resultDiv.style.display = 'block';
 }
-</script>
 
+async function fetchProgress() {
+    const robot_name = document.getElementById('robot_name').value;
+    const task_name = document.getElementById('task_name').value;
+    
+    // 만약 액션 작업(예: move_to_goal)이 아닐 때는 굳이 물어보지 않음
+    if (task_name !== 'move_to_goal') return;
+
+    try {
+        // 기존 통신 API 재활용 (action을 'status'로 보냄!)
+        const response = await fetch('/api/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                robot_name: robot_name, 
+                task_name: task_name, 
+                action: 'status' 
+            })
+        });
+        const resData = await response.json();
+        
+        if (response.ok && resData.result === 'success') {
+            const percent = resData.message; // 메인 서버가 대답한 "45" 같은 숫자
+            
+            // 화면 업데이트
+            document.getElementById('progress-bar').style.width = percent + '%';
+            document.getElementById('progress-text').innerText = percent + '%';
+        }
+    } catch (error) {
+        console.log("상태 업데이트 실패:", error);
+    }
+}
+
+// 1초(1000ms)마다 fetchProgress 함수를 백그라운드에서 계속 실행!
+setInterval(fetchProgress, 1000);
+</script>
 </body>
 </html>
 """
@@ -108,20 +133,31 @@ async function sendCommand() {
 class FlaskRosClient(Node):
     def __init__(self):
         super().__init__("flask_ros_client")
-        self.cli = self.create_client(TaskCommandSrv, "/fleet/task_command")
+        self.cli = self.create_client(TaskCommandSrv, "/roscue/command_server")
 
-    async def call_fleet_manager(self, dto: RoscueTaskDTO):
+    def call_main_server(self, dto: RoscueTaskDTO, timeout_sec=20.0):
         if not self.cli.wait_for_service(timeout_sec=3.0):
-            return False, "Fleet Manager Service unavailable"
+            return False, "Main Server unavailable"
 
         req = TaskCommandSrv.Request()
         req.robot_name = dto.robot_name
         req.task_name = dto.task_name
         req.action = dto.action.value
 
+        # 백그라운드 ROS 스레드에 서비스 요청 전달
+        future = self.cli.call_async(req)
+        
+        done_event = threading.Event()
+        future.add_done_callback(lambda f: done_event.set())
 
-        resp = await self.cli.call_async(req)
-        return resp.accepted, resp.message
+        if not done_event.wait(timeout=timeout_sec):
+            return False, "ROS service timeout"
+
+        try:
+            resp = future.result()
+            return resp.accepted, resp.message
+        except Exception as e:
+            return False, f"Execution error: {e}"
 
 ros_client_node = None
 
@@ -132,7 +168,6 @@ def ros_loop():
 
 @app.route("/", methods=["GET"])
 def index():
-    """웹 브라우저로 접속했을 때 HTML 화면을 띄워주는 라우트"""
     return render_template_string(HTML_TEMPLATE)
 
 @app.route("/api/command", methods=["POST"])
@@ -141,22 +176,19 @@ def handle_http_request():
     data = request.get_json() or {}
 
     try:
+        # DTO 생성 시에도 params 관련 로직을 제거하여 
+        # 사용자가 원래 작성했던 순수 RoscueTaskDTO 구조와 일치시킵니다.
         task_dto = RoscueTaskDTO(
             robot_name=data.get("robot_name", ""),
             task_name=data.get("task_name", ""),
             action=TaskAction(data.get("action", "status"))
         )
-
     except ValueError as e:
         return jsonify({"result": "fail", "message": f"Invalid Action: {e}"}), 400
 
-    future = asyncio.run_coroutine_threadsafe(
-        ros_client_node.call_fleet_manager(task_dto),
-        ros_client_node.executor.create_task.__self__._loop
-    )
-
     try:
-        accepted, message = future.result(timeout=5.0)
+        # 클라이언트 호출 시 DTO만 넘겨줍니다.
+        accepted, message = ros_client_node.call_main_server(task_dto)
         status_code = 200 if accepted else 400
         return jsonify({
             "result": "success" if accepted else "fail",

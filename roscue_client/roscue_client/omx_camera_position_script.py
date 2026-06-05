@@ -1,3 +1,5 @@
+# robot: omx_camera_position_script.py
+# 터틀봇에서 실행 할 코드
 
 import time
 import sys
@@ -8,9 +10,6 @@ from lerobot.motors.dynamixel import DynamixelMotorsBus
 from lerobot.motors.dynamixel.dynamixel import OperatingMode
 
 
-#=======================================#
-# 터틀봇에서 실행 할 코드
-#=======================================#
 POSITION_MODE = OperatingMode.POSITION.value
 PORT = "/dev/ttyACM0"
 READ_MODE = False
@@ -68,13 +67,13 @@ def main():
 
         # 3) 특정 포즈로 이동 → 모터가 알아서 유지
         follower_bus.sync_write("Goal_Position", TARGET_POSE, normalize=False)
-        print("특정 포즈로 이동했습니다. 토크가 살아있는 동안 자세를 유지합니다.")
+        print("카메라 고정 완료")
 
         while True:
             time.sleep(1)
 
     except KeyboardInterrupt:
-        print("\n종료합니다. (토크는 유지되어 자세가 풀리지 않습니다)")
+        print("\nEND")
     finally:
         follower_bus.disconnect()
 

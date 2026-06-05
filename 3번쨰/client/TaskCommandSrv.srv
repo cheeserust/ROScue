@@ -1,0 +1,6 @@
+string robot_name
+string task_name
+string action
+---
+bool accepted
+string message

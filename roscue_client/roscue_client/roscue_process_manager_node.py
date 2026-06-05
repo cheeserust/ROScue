@@ -1,3 +1,4 @@
+# robot: roscue_process_manager_node.py
 import os
 import signal
 import subprocess
@@ -5,7 +6,7 @@ import subprocess
 import rclpy
 from rclpy.node import Node
 
-from roscue_interface.srv import TaskCommand
+from roscue_interface.srv import TaskCommandSrv
 import subprocess, time
 
 
@@ -32,7 +33,7 @@ class RoscueProcessManagerNode(Node):
         super().__init__('roscue_process_manager')
         self.processes = {}  # task_name -> subprocess.Popen
         self.service = self.create_service(
-            TaskCommand,
+            TaskCommandSrv,
             'task_command',
             self.handle_task_command
         )

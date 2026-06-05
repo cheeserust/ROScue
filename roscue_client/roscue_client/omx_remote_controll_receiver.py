@@ -1,3 +1,4 @@
+# robot: omx_remote_controll_receiver.py
 import socket
 import struct
 import numpy as np
