@@ -73,3 +73,48 @@ turtlebot3_bringup/launch/robot.launch.py에서 라이다 frame_id를 다시 아
 → scan frame_id 중복 문제
 → collision_monitor 출력 문제
 → 주행 파라미터 튜닝 단계
+
+------------------------------------------------------------------------------------------------------
+
+# 핑키 + 버거 publish point 테스트\
+전체적인 계획
+1. pinky가 박스를 특정한 ROI 영역 조건을 만족시키면서 인식하는 그 위치 좌표 -> 그 순간까지 만든 map 기준
+2. map 기준 목표 좌표로 터틀 자율 주행
+3. 근처까지 가서 박스 yolo 인식되는 순간부터 teleop 조작 변경 -> 구현해보니까 시나리오에 좀 부적합 -> 차라리 근처까지 갔을 때 PID 적용해서 정밀제어하는 게 나을 듯
+
+#### 핑키 테스트용
+1. pinky -> map_building.launch.xml 수정
+rviz2에서 clicked_point를 좌표로 저장하는 노드 추가
+이때 rviz의 fixed frame은 반드시 map
+2. clicked_point_saver.py 새로 만들기
+pinky_navigation/scripts 안에
+Publish Point로 클릭한 좌표를 받아서 YAML 파일로 저장하는 노드
+/home/user/pinky_box_target.yaml여기에 좌표 저장
+-> 다른 터틀은 여기에 저장된 좌표로 가면 될 듯
+새로 실행할 때는 이전에 생성된 파일 삭제 후 실행
+3. CMakeLists.txt 수정 필요
+4. 실행 권한 부여 필요
+chmod +x 경로맞게수정/pinky_navigation/scripts/clicked_point_saver.py
+
+### 터틀봇 테스트용
+1. navigation2_live_clicked_point.launch.py 새로 생성
+/home/user/ROS2_project_ws/turtlebot/src/turtlebot3/turtlebot3_navigation2 경로
+2. 같은 경로에 scripts 폴더 만든 후 scripts 안에 clicked_point_to_nav_goal.py 새로 생성
+3. 권한 부여
+chmod +x /home/user/ROS2_project_ws/turtlebot/src/turtlebot3/turtlebot3_navigation2/scripts/clicked_point_to_nav_goal.py
+4. CMakeLists.txt 수정
+
+### 실행
+1. pc/pinky/turtle 도메인 id 동일-> 충돌남
+	1-0. pinky의 namespace 만들었더니 하드코딩 되어있어서 제대로 안 됨
+	1-1.pinky pro 와 turtlebot domain id를 분리 후 domain bridge 사용 -> id가 분리되면서 map과 tf 공유 불가 -> 토픽 모두 받아도 lifecycle inactive
+	1-2. domain id 다시 합치고 turtlebot의 namespace 생성
+	
+2. pinky서버-ros2 launch pinky_bringup bringup_robot.launch.xml
+3. pinky서버- ros2 launch pinky_navigation map_building.launch.xml 
+4. pc - ros2 launch pinky_navigation map_view.launch.xml
+5. 터틀봇- ros2 launch turtlebot3_bringup robot.launch.py namespace:=tb3 multi_robot_name:=tb3
+6. pc- ros2 launch turtlebot3_navigation2 navigation2_live_clicked_point.launch.py params_file:=/home/user/ROS2_project_ws/turtlebot/src/turtlebot3/turtlebot3_navigation2/param/burger.yaml
+
+7. /home/user/ROS2_project_ws/turtlebot/src/turtlebot3/turtlebot3_navigation2/param/burger.yaml 수정
+8. 터틀봇 bringup 파일 수정
