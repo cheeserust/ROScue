@@ -39,7 +39,7 @@ TCP_HOST = '0.0.0.0'
 TCP_PORT = 9999
 
 # 로봇들에게 직접 명령(SRV)을 넘겨줘야 하는 Task 이름 목록
-REMOTE_ROBOT_TASKS = ['camera_position', 'move_to_goal'] 
+REMOTE_ROBOT_TASKS = ['camera_position', 'remote_control'] 
 
 # 메인 서버(PC)가 통신할 로봇들 목록
 ROBOT_LIST = ['waffle1', 'waffle2']
@@ -220,6 +220,7 @@ class RoscueMainServerNode(Node):
             except Exception as e:
                 response.accepted = False
                 response.message = f"로봇 명령 전달 실패: {str(e)}"
+
             
             return response
 

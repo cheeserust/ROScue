@@ -10,24 +10,24 @@ from ultralytics import YOLO
 SERVER_HOST = "127.0.0.1"
 SERVER_PORT = 9999
 
-def send_count(camera, value):
+def publish_data(camera, value):
     """독립된 소켓 전송 함수 (필요할 때만 연결 후 닫기 또는 유지)"""
     payload = (json.dumps({"type": "count", "camera": camera, "count": value}) + "\n").encode("utf-8")
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2.0)
-        sock.connect((SERVER_HOST, SERVER_PORT))
-        sock.sendall(payload)
-        sock.close()
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_socket.settimeout(2.0)
+        client_socket.connect((SERVER_HOST, SERVER_PORT))
+        client_socket.sendall(payload)
+        client_socket.close()
     except OSError as e:
         print(f"[{camera}] 메인 서버 전송 실패:", e)
 
 
-def camera_worker(index, name, model_path_a, model_path_b, current_model_flag, global_count, stop_event, display_queue):
+def camera_worker(index, name, model_path_a, model_path_b, current_model_flag, global_count, stop_event, frame_queue):
     """
-    각 카메라는 완전히 독립된 프로세스에서 작동합니다. (GIL 영향 없음)
+    각 카메라는 완전히 독립된 프로세스에서 작동합니다.
     """
-    # 각 프로세스 내부에서 모델을 독립적으로 로드 (메모리 충돌 방지)
+
     print(f"[{name}] 모델 로딩 중...")
     model_a = YOLO(model_path_a)
     model_b = YOLO(model_path_b)
@@ -37,7 +37,7 @@ def camera_worker(index, name, model_path_a, model_path_b, current_model_flag, g
         print(f"[{name}] 카메라를 열 수 없습니다.")
         return
 
-    TARGET = "open"
+    TARGET_CLASS = "open"
     THRESHOLD = 15
     streak = 0
     triggered = False
@@ -64,20 +64,20 @@ def camera_worker(index, name, model_path_a, model_path_b, current_model_flag, g
         result = current_model(frame, verbose=False)[0]
         
         # 메인 화면으로 보낼 이미지 큐에 넣기 (큐가 가득 차면 오래된 것 버림)
-        if display_queue.qsize() < 2:
-            display_queue.put((name, result.plot()))
+        if frame_queue.qsize() < 2:
+            frame_queue.put((name, result.plot()))
 
         # 클래스 카운팅 로직
         detected = {current_model.names[int(c)] for c in result.boxes.cls.tolist()}
-        if TARGET in detected:
+        if TARGET_CLASS in detected:
             streak += 1
             if streak >= THRESHOLD and not triggered:
                 with global_count.get_lock(): # 멀티프로세스용 Lock 코드
                     global_count.value += 1
                     current_val = global_count.value
                 triggered = True
-                print(f"[{name}] {TARGET} 감지! count = {current_val}")
-                send_count(name, current_val)
+                print(f"[{name}] {TARGET_CLASS} 감지! count = {current_val}")
+                publish_data(name, current_val)
         else:
             streak = 0
             triggered = False
@@ -118,15 +118,15 @@ if __name__ == "__main__":
     model_b_path = "best.pt"
 
     # 프로세스 생성 및 시작
-    p0 = Process(target=camera_worker, args=(0, "CAM0", model_a_path, model_b_path, cam0_model_flag, global_count, stop_event, cam0_queue))
-    p1 = Process(target=camera_worker, args=(2, "CAM1", model_a_path, model_b_path, cam1_model_flag, global_count, stop_event, cam1_queue))
+    p0 = Process(TARGET_CLASS=camera_worker, args=(0, "CAM0", model_a_path, model_b_path, cam0_model_flag, global_count, stop_event, cam0_queue))
+    p1 = Process(TARGET_CLASS=camera_worker, args=(2, "CAM1", model_a_path, model_b_path, cam1_model_flag, global_count, stop_event, cam1_queue))
     
     p0.start()
     p1.start()
 
 
     # 터미널 입력 전용 스레드 시작
-    input_thread = threading.Thread(target=terminal_input_worker, args=(stop_event, cam1_model_flag), daemon=True)
+    input_thread = threading.Thread(TARGET_CLASS=terminal_input_worker, args=(stop_event, cam1_model_flag), daemon=True)
     input_thread.start()
 
 
