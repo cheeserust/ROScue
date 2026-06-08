@@ -1,12 +1,12 @@
 # web_server.py
 from flask import Flask, jsonify, request, render_template
 from roscue_dto import RoscueTaskDTO, TaskAction
-import ros_gateway
+import web_gateway
 
 app = Flask(__name__)
 
 # 서버 시작 시 ROS2 게이트웨이 노드 백그라운드 실행 및 참조 인스턴스 획득
-ros_client_node = ros_gateway.start_ros_thread()
+ros_client_node = web_gateway.start_ros_thread()
 
 @app.route("/", methods=["GET"])
 def index():

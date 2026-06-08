@@ -1,3 +1,5 @@
+# TODO: yolo gateway를 만들어 ROS 중앙서버와 command로 주고받음
+
 import cv2
 import json
 import socket
@@ -5,6 +7,8 @@ import time
 from multiprocessing import Process, Queue, Event, Value
 import threading
 from ultralytics import YOLO
+
+# 이 파일은 오직 프레임 받아서 추론 수행
 
 # ===== 메인 서버(roscue_main_server_node) 설정 =====
 SERVER_HOST = "127.0.0.1"
