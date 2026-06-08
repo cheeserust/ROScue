@@ -11,12 +11,16 @@ from rclpy.executors import MultiThreadedExecutor
 from roscue_interface.srv import TaskCommandSrv
 
 
-SOURCE = "source /opt/ros/jazzy/setup.bash && source /home/kkh/robot_ws/install/setup.bash"
+SOURCE = "source /opt/ros/jazzy/setup.bash && source /home/kkh/turtlebot3_ws/install/setup.bash"
 
 TASK_DICTIONARY = {
     'camera_position': {
         'cmd': ['python3', '/home/kkh/robot_ws/src/roscue_client/roscue_client/omx_camera_position_script.py'],
         'processor_name': 'omx_camera_position_script.py'
+    },
+    'robot_omx_manual_control': {
+        'cmd': ['bash', '-lc', f"{SOURCE} && ros2 run roscue_client robot_omx_manual_control"],
+        'processor_name': 'robot_omx_manual_control'
     },
     'follower': {
         'cmd': ['bash', '-lc', f"{SOURCE} && ros2 run robot_apps follower_node"],
@@ -154,7 +158,7 @@ def main():
     finally:
         node.get_logger().info("종료 중...")
         # 노드가 꺼질 때 task 끄기
-        for task in list(node.processes.keys()):
+        for task in list(node.active_processes_map.keys()):
             node._stop_task(task)
         node.destroy_node()
         rclpy.shutdown()

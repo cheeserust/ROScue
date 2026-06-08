@@ -26,7 +26,7 @@ class LeaderNode(Node):
         self.publisher_ = self.create_publisher(ArmPositions, 'goal_positions', 10)
         
         # 3. 60Hz 주기로 타이머 실행 (1/60초 마다 timer_callback 호출)
-        self.timer = self.create_timer(1.0 / 60.0, self.timer_callback)
+        self.timer = self.create_timer(1.0 / 30.0, self.timer_callback)
 
         # 다이나믹셀 모터 설정
         self.motors_config = {

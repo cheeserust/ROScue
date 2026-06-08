@@ -1,15 +1,3 @@
-# flask server
-import threading
-from flask import Flask, jsonify, request, render_template_string
-import rclpy
-from rclpy.node import Node
-from roscue_interface.srv import TaskCommandSrv
-from roscue_dto import RoscueTaskDTO, TaskAction
-
-app = Flask(__name__)
-
-# --- 웹 브라우저 인라인 HTML 템플릿 (param 제거됨) ---
-HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -78,10 +66,10 @@ async function sendCommand() {
         const resData = await response.json();
         if (response.ok && resData.result === 'success') {
             resultDiv.className = 'success';
-            resultDiv.innerText = `✅ 성공!\\n메시지: ${resData.message}`;
+            resultDiv.innerText = `✅ 성공!\n메시지: ${resData.message}`;
         } else {
             resultDiv.className = 'fail';
-            resultDiv.innerText = `❌ 실패!\\n사유: ${resData.message}`;
+            resultDiv.innerText = `❌ 실패!\n사유: ${resData.message}`;
         }
     } catch (error) {
         resultDiv.className = 'fail';
@@ -127,84 +115,3 @@ setInterval(fetchProgress, 1000);
 </script>
 </body>
 </html>
-"""
-
-# --- ROS 2 클라이언트 노드 설정 ---
-class FlaskRosClient(Node):
-    def __init__(self):
-        super().__init__("flask_ros_client")
-        self.cli = self.create_client(TaskCommandSrv, "/api/web_command")
-
-    def call_main_server(self, dto: RoscueTaskDTO, timeout_sec=20.0):
-        if not self.cli.wait_for_service(timeout_sec=3.0):
-            return False, "Main Server unavailable"
-
-        req = TaskCommandSrv.Request()
-        req.robot_name = dto.robot_name
-        req.task_name = dto.task_name
-        req.action = dto.action.value
-
-        # 백그라운드 ROS 스레드에 서비스 요청 전달
-        future = self.cli.call_async(req)
-        
-        done_event = threading.Event()
-        future.add_done_callback(lambda f: done_event.set())
-
-        if not done_event.wait(timeout=timeout_sec):
-            return False, "ROS service timeout"
-
-        try:
-            resp = future.result()
-            return resp.accepted, resp.message
-        except Exception as e:
-            return False, f"Execution error: {e}"
-
-ros_client_node = None
-
-def ros_loop():
-    rclpy.spin(ros_client_node)
-
-# --- Flask 라우트 설정 ---
-
-@app.route("/", methods=["GET"])
-def index():
-    return render_template_string(HTML_TEMPLATE)
-
-@app.route("/api/command", methods=["POST"])
-def handle_http_request():
-    global ros_client_node
-    data = request.get_json() or {}
-
-    try:
-        # DTO 생성 시에도 params 관련 로직을 제거하여 
-        # 사용자가 원래 작성했던 순수 RoscueTaskDTO 구조와 일치시킵니다.
-        task_dto = RoscueTaskDTO(
-            robot_name=data.get("robot_name", ""),
-            task_name=data.get("task_name", ""),
-            action=TaskAction(data.get("action", "status"))
-        )
-    except ValueError as e:
-        return jsonify({"result": "fail", "message": f"Invalid Action: {e}"}), 400
-
-    try:
-        # 클라이언트 호출 시 DTO만 넘겨줍니다.
-        accepted, message = ros_client_node.call_main_server(task_dto)
-        status_code = 200 if accepted else 400
-        return jsonify({
-            "result": "success" if accepted else "fail",
-            "message": message
-        }), status_code
-    except Exception as e:
-        return jsonify({"result": "fail", "message": f"Communication error: {e}"}), 500
-
-if __name__ == "__main__":
-    rclpy.init()
-    ros_client_node = FlaskRosClient()
-
-    t = threading.Thread(target=ros_loop, daemon=True)
-    t.start()
-
-    try:
-        app.run(host="127.0.0.1", port=5000, debug=False)
-    finally:
-        rclpy.shutdown()

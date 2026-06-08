@@ -9,11 +9,14 @@ import threading
 import socket
 import json
 import subprocess
+import os
+import signal
 
 
 from roscue_interface.srv import TaskCommandSrv
 from rclpy.action import ActionClient
 from roscue_interface.action import MoveTaskAction
+
 import os
 
 
@@ -39,11 +42,26 @@ TCP_HOST = '0.0.0.0'
 TCP_PORT = 9999
 
 # 로봇들에게 직접 명령(SRV)을 넘겨줘야 하는 Task 이름 목록
-REMOTE_ROBOT_TASKS = ['camera_position', 'remote_control'] 
+REMOTE_ROBOT_TASKS = ['camera_position']
+
+# 서버 PC에서 ros2 run으로 실행할 Task 명령 매핑
+LOCAL_ROS_TASKS = {
+    'server_omx_manual_control': [
+        'ros2', 'run', 'roscue_server', 'server_omx_manual_control',
+        '--ros-args', '-p', 'port:=/dev/ttyACM0'
+    ],
+}
+
+# 서버 로컬 Task와 짝을 이루는 로봇 Task (서버 시작/정지 시 로봇에도 연동)
+PAIRED_ROBOT_TASKS = {
+    'server_omx_manual_control': 'robot_omx_manual_control',
+}
 
 # 메인 서버(PC)가 통신할 로봇들 목록
 ROBOT_LIST = ['waffle1', 'waffle2']
 
+
+ROS_DOMAIN_ID = 14
 class RoscueMainServerNode(Node):
     def __init__(self):
         super().__init__('roscue_main_server')
@@ -54,7 +72,16 @@ class RoscueMainServerNode(Node):
         # 1. 로컬 프로세스 관리를 위한 딕셔너리 (omx_manual_control 등)
         self.running_processes = {}
 
-        # 2. 각 로봇에게 명령을 전달할 Client 생성 (/waffle1/task_command 등)
+        # Flask로부터 명령을 받을 api 생성 (/api/web_command)
+        self.create_service(
+            TaskCommandSrv, 
+            "/api/web_command", 
+            self.handle_web_request,
+            callback_group=self.cb_group
+        )
+        
+
+        # 각 로봇에게 명령을 전달할 Client 생성 (/waffle1/task_command 등)
         self.robot_clients = {}
         for robot in ROBOT_LIST:
             self.robot_clients[robot] = self.create_client(
@@ -63,23 +90,14 @@ class RoscueMainServerNode(Node):
                 callback_group=self.cb_group
             )
 
-        # 3. Flask로부터 명령을 받을 Server 생성 (/roscue/command_server)
-        self.create_service(
-            TaskCommandSrv, 
-            "/roscue/command_server", 
-            self.handle_fleet_command,
-            callback_group=self.cb_group
-        )
 
         # 4. 하위 노드(자율주행 등)로 데이터를 하달하는 Publisher
         self.nav_cmd_publisher = self.create_publisher(String, '/roscue/nav_cmd', 10)
 
-        # 5. yolo 부터 데이ㅓㅌ 받는 TCP 서버 스레드
-        self.tcp_thread = threading.Thread(target=self.run_tcp_server, daemon=True)
-        self.tcp_thread.start()
 
 
-        # Topic 예시
+
+        # Topic 예
         # 로봇 상태 구독
         self.status_sub = self.create_subscription(
             String,
@@ -87,23 +105,24 @@ class RoscueMainServerNode(Node):
             self.robot_status_callback,
             10
         )
-        self.fleet_status = {} # 로봇들의 상태를 저장 딕셔너리
+        self.robot_status = {} # 로봇들의 상태를 저장 딕셔너리
         # END
 
-        # Action 예시
+        # Action 예
         self.robot_progress = {}
         self.action_clients = {}
         for robot in ROBOT_LIST:
             self.action_clients[robot] = ActionClient(self, MoveTaskAction, f'/{robot}/move_action')
 
 
+        # 5. yolo 부터 데이ㅓㅌ 받는 TCP 서버 스레드
+        self.tcp_thread = threading.Thread(target=self.run_tcp_server, daemon=True)
+        self.tcp_thread.start()
+        self.detection_count = {} # YOLO로 부터 받아온 값
 
-        # YOLO로 부터 받아온 값
-        self.detection_count = {}
 
 
-
-        self.get_logger().info('🚀 메인 컨트롤 노드 시작 (라우팅 & 프로세스 관리 준비 완료)')
+        self.get_logger().info('메인 컨트롤 노드 시작 (라우팅 & 프로세스 관리 준비 완료)')
 
 
     
@@ -115,7 +134,7 @@ class RoscueMainServerNode(Node):
             robot_name = data['robot_name']
             
             # 최신 상태 업데이트 (나중에 Flask가 요청하면 이 딕셔너리를 던져주면 됨)
-            self.fleet_status[robot_name] = data
+            self.robot_status[robot_name] = data
             
             # 배터리가 20% 이하면 경고!
             if data['battery'] < 20.0:
@@ -175,7 +194,7 @@ class RoscueMainServerNode(Node):
 
 
 
-    def handle_fleet_command(self, request, response):
+    def handle_web_request(self, request, response):
         """ Flask에서 온 요청을 분류하여 로봇에게 전달하거나, 로컬에서 실행합니다. """
         robot_name = request.robot_name.strip()
         task_name = request.task_name.strip()
@@ -230,15 +249,24 @@ class RoscueMainServerNode(Node):
         else:
             try:
                 if action == 'start':
-                    current_dir = os.path.dirname(os.path.abspath(__file__))
-                    script_path = os.path.join(current_dir, f"{task_name}.py")
-                    
-                    
+
                     if task_name in self.running_processes and self.running_processes[task_name].poll() is None:
                         response.accepted = False
                         response.message = f"이미 실행 중인 로컬 작업입니다: {task_name}"
                     else:
-                        proc = subprocess.Popen(['python3', script_path])
+                        # 내부 ROS 노드 실행!!!!!!!!!!!!!!!!!!
+                        if task_name in LOCAL_ROS_TASKS:
+                            cmd = list(LOCAL_ROS_TASKS[task_name])
+                            if robot_name and robot_name in ROBOT_LIST:
+                                cmd += ['-r', f'__ns:=/{robot_name}']
+                        
+                        # 외부 py 스크립트 실행!!!!!!!!!!!!!!!
+                        else:
+                            current_dir = os.path.dirname(os.path.abspath(__file__))
+                            script_path = os.path.join(current_dir, f"{task_name}.py")
+                            cmd = ['python3', script_path]
+
+                        proc = subprocess.Popen(cmd, preexec_fn=os.setsid)
                         self.running_processes[task_name] = proc
                         response.accepted = True
                         response.message = f"로컬 프로세스 시작됨: {task_name} (PID: {proc.pid})"
@@ -246,9 +274,18 @@ class RoscueMainServerNode(Node):
                 elif action == 'stop':
                     if task_name in self.running_processes:
                         proc = self.running_processes[task_name]
-                        proc.terminate()
-                        proc.wait(timeout=2)
-                        del self.running_processes[task_name]
+                        try:
+                            # SIGINT → KeyboardInterrupt → finally → disconnect() 정상 실행
+                            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+                            proc.wait(timeout=3)
+                        except subprocess.TimeoutExpired:
+                            self.get_logger().warning(f"강제 종료 시도 (SIGKILL): {task_name}")
+                            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                            proc.wait(timeout=1)
+                        except Exception as e:
+                            self.get_logger().error(f"종료 중 에러: {e}")
+                        finally:
+                            del self.running_processes[task_name]
                         response.accepted = True
                         response.message = f"로컬 프로세스 종료됨: {task_name}"
                     else:
@@ -268,14 +305,40 @@ class RoscueMainServerNode(Node):
                 elif action == 'status':
                     response.accepted = True
                     response.message = f"실행 중인 로컬 작업: {list(self.running_processes.keys())}"
-                
-                
+
+                # 로컬 start/stop 성공 시, 짝지어진 로봇 Task도 연동
+                if action in ('start', 'stop') and response.accepted:
+                    self._forward_to_paired_robot(robot_name, task_name, action)
 
             except Exception as e:
                 response.accepted = False
                 response.message = f"로컬 프로세스 관리 에러: {str(e)}"
 
             return response
+
+    def _forward_to_paired_robot(self, robot_name, server_task_name, action):
+        """서버 로컬 Task의 start/stop 시 짝지어진 로봇 Task에도 같은 명령 전달."""
+        robot_task_name = PAIRED_ROBOT_TASKS.get(server_task_name)
+        if not robot_task_name:
+            return
+        if robot_name not in self.robot_clients:
+            self.get_logger().warning(f"로봇 연동 실패: 등록되지 않은 로봇 [{robot_name}]")
+            return
+
+        client = self.robot_clients[robot_name]
+        if not client.wait_for_service(timeout_sec=3.0):
+            self.get_logger().warning(f"로봇 연동 실패: [{robot_name}] 서비스 응답 없음")
+            return
+
+        req = TaskCommandSrv.Request()
+        req.robot_name = robot_name
+        req.task_name = robot_task_name
+        req.action = action
+        try:
+            resp = client.call(req)
+            self.get_logger().info(f"로봇 [{robot_name}] {robot_task_name} {action} → {resp.message}")
+        except Exception as e:
+            self.get_logger().error(f"로봇 연동 명령 전달 실패: {e}")
 
 
     # =========================================================
@@ -325,7 +388,7 @@ class RoscueMainServerNode(Node):
             self.get_logger().warn(f"알 수 없는 데이터: {data}")
 
 def main():
-    rclpy.init()
+    rclpy.init(domain_id=ROS_DOMAIN_ID)
     node = RoscueMainServerNode()
 
     # 쓰레드가 4개인 Executor 사용 (TCP, Service 콜백, Client 등 멀티스레딩)
