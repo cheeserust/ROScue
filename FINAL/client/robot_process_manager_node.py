@@ -1,4 +1,5 @@
 # robot: roscue_process_manager_node.py
+# 로봇쪽 클라이언트 부분
 import os
 import signal
 import subprocess
