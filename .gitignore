@@ -1,0 +1,16 @@
+turtlebot/build/*
+turtlebot/install/*
+turtlebot/log/*
+turtlebot/map/*
+turtlebot/src/DynamixelSDK/
+turtlebot/src/turtlebot3_msgs/
+turtlebot/src/turtlebot3_simulations/
+turtlebot/tree frame.gv
+turtlebot/tree frame.pdf
+
+pinky_pro/build/*
+pinky_pro/install/*
+pinky_pro/log/*
+.vscode/*
+.env
+**/.env

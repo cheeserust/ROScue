@@ -1,0 +1,40 @@
+<!-- pinky pro 내부에 있는 launch 코드 -->
+
+
+<?xml version='1.0' ?>
+<launch>
+    <arg name="use_sim_time" default="false"/>
+    <arg name="slam_params_file" default="$(find-pkg-share pinky_navigation)/params/mapper_params.yaml"/>
+
+    <!--
+        Pinky SLAM
+
+        기존에 잘 동작하던 slam_toolbox online_sync_launch.py를 그대로 사용한다.
+        단, Burger/Waffle localization용 /map과 충돌하지 않도록
+        slam_toolbox의 map 계열 토픽을 /pinky 아래로 remap한다.
+
+        결과:
+          /pinky/map
+          /pinky/map_metadata
+          /pinky/map_updates
+    -->
+    <group>
+        <!-- full map -->
+        <set_remap from="map" to="/pinky/map"/>
+        <set_remap from="/map" to="/pinky/map"/>
+
+        <!-- map metadata -->
+        <set_remap from="map_metadata" to="/pinky/map_metadata"/>
+        <set_remap from="/map_metadata" to="/pinky/map_metadata"/>
+
+        <!-- incremental map updates -->
+        <set_remap from="map_updates" to="/pinky/map_updates"/>
+        <set_remap from="/map_updates" to="/pinky/map_updates"/>
+
+        <include file="$(find-pkg-share slam_toolbox)/launch/online_sync_launch.py">
+            <arg name="slam_params_file" value="$(var slam_params_file)"/>
+            <arg name="use_sim_time" value="$(var use_sim_time)"/>
+        </include>
+    </group>
+
+</launch>
