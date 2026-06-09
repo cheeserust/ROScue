@@ -14,3 +14,4 @@ pinky_pro/log/*
 .vscode/*
 .env
 **/.env
+pinky_pro/src/aws-robomaker-small-house-world/
