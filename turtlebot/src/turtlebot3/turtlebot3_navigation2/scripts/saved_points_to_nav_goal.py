@@ -20,7 +20,7 @@ class SavedPointsToNavGoal(Node):
     def __init__(self):
         super().__init__('saved_points_to_nav_goal')
 
-        self.declare_parameter('yaml_file', '/home/user/pinky_box_target.yaml')
+        self.declare_parameter('yaml_file', '/home/kj/ROS2_project_ws/pinky_box_target.yaml')
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('default_yaw', 0.0)
 

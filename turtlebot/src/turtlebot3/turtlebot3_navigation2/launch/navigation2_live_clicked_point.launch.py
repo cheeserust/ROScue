@@ -94,7 +94,7 @@ def generate_launch_description():
         # 실제 Pinky 최종맵은 final_map_yaml 파일이 생기면 자동 load_map으로 교체
         DeclareLaunchArgument(
             'map',
-            default_value='/home/user/ROS2_project_ws/map/401.yaml',
+            default_value='/home/kj/ROS2_project_ws/map/401.yaml',
             description='Placeholder map yaml; real map is loaded later by map_auto_loader'
         ),
 
@@ -115,7 +115,7 @@ def generate_launch_description():
         # RViz Publish Point로 찍은 좌표들을 저장할 YAML 파일
         DeclareLaunchArgument(
             'clicked_points_yaml',
-            default_value='/home/user/ROS2_project_ws/pinky_box_target.yaml',
+            default_value='/home/kj/ROS2_project_ws/pinky_box_target.yaml',
             description='YAML file path for saving clicked points in order'
         ),
 
