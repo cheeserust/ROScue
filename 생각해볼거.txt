@@ -1,0 +1,1 @@
+loop closure 가 정말 문제가 된다면 mapper_params.yaml 의 do_loop_closing 을 false 로 변경 가능
