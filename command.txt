@@ -1,19 +1,12 @@
-# 핑키 + 버거 + 와플
-* ROS_DOMAIN_ID=14 로 통일
-1. pc서버에 있는 burger.yaml, waffle.yaml 수정
-2. PC 서버 navigation2_live_clicked_point.launch.py 수정
-3. PC 서버 clicked_point_to_nav_goal.py 수정
-4. Burger 서버 robot.launch.py 수정
-5. Waffle 서버 robot.launch.py 수정
-
-# 터미널
-1. pinky 서버 - ros2 launch pinky_bringup bringup_robot.launch.xml 
-2. pinky 서버 - ros2 launch pinky_navigation map_building.launch.xml 
-3. pc - ros2 launch turtlebot3_navigation2 navigation2_live_clicked_point.launch.py \
+1. pinky 서버 - ros2 launch pinky_bringup bringup_robot.launch.xml
+2. pinky 서버 - ros2 launch pinky_navigation map_building.launch.xml
+3. pc 서버 - ros2 launch turtlebot3_navigation2 navigation2_live_clicked_point.launch.py \
   burger_params_file:=/home/user/ROS2_project_ws/turtlebot/src/turtlebot3/turtlebot3_navigation2/param/burger.yaml \
   waffle_params_file:=/home/user/ROS2_project_ws/turtlebot/src/turtlebot3/turtlebot3_navigation2/param/waffle.yaml
-4. 버거 서버 - ros2 launch turtlebot3_bringup robot.launch.py
-5. 와플 서버 - ros2 launch turtlebot3_bringup robot.launch.py
-
-6. pc 서버 - pinky teleop 실행
-7. pinky 서버 - flask 실행
+4. pc 서버 - ros2 launch pinky_navigation map_view.launch.xml
+5. 버거 서버 - ros2 launch turtlebot3_bringup robot.launch.py
+6. 와플 서버 - ros2 launch turtlebot3_bringup robot.launch.py
+7. pc 서버 - python3 teleop_twist_keyboard.py
+8. pinky 서버 - flask 실행
+9. pc 서버 - ros2 run nav2_map_server map_saver_cli -f test --ros-args -r /map:=/pinky/map -p save_map_timeout:=10.0 또는 ros2 run pinky_navigation pinky_map_saver.py 
+10. pc 서버 - ros2 run turtlebot3_navigation2 saved_points_to_nav_goal.py
