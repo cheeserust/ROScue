@@ -10,3 +10,54 @@
 8. pinky 서버 - flask 실행
 9. pc 서버 - ros2 run nav2_map_server map_saver_cli -f test --ros-args -r /map:=/pinky/map -p save_map_timeout:=10.0 또는 ros2 run pinky_navigation pinky_map_saver.py 
 10. pc 서버 - ros2 run turtlebot3_navigation2 saved_points_to_nav_goal.py
+
+
+===================================================================================================
+1. Pinky bringup + SLAM 시작 (P1, P2) — /map 발행 시작
+2. PC bridge (터미널 1) — 맵이 11번으로 흐르기 시작
+3. Burger bringup (B1)
+4. Burger Nav2 (B2) — 이 시점에 맵이 이미 와 있으므로 잠김 확률 낮음
+5. PC RViz (터미널 3) → 2D Pose Estimate (burger 실제 위치)
+6. bt_navigator active 확인, inactive면 B3
+7. PC 변환 노드 (터미널 2) + Burger 패트롤 (B4)
+8. Pinky 텔레옵으로 SLAM 진행하며 (P3) Publish Point 클릭 → burger 출동
+
+Pinky (domain 10)
+# 터미널 P1 — bringup
+ros2 launch pinky_bringup bringup_robot.launch.xml
+
+# 터미널 P2 — SLAM
+ros2 launch pinky_navigation map_building.launch.xml
+# ※ /pinky remap 제거한 버전 — plain /map 발행이어야 bridge config와 맞음
+
+# 터미널 P3 — 텔레옵 (WASD)
+python3 teleop_pygame.py   # 또는 기존 실행 방식대로
+
+PC (domain 10)
+# 터미널 1 — bridge (10→11)
+ros2 run domain_bridge domain_bridge pinky10_to_burger11_map.yaml
+# ※ /map, /map_metadata, /target_point 포함 버전
+
+# 터미널 2 — 변환 노드
+python3 ~/NEWrosproject/pinky_pro/scripts/clicked_point_to_target.py
+
+# 터미널 3 — RViz (pinky 맵 보며 클릭)
+rviz2
+# Fixed Frame=map, Map(/map, Transient Local), Publish Point로 클릭
+
+Burger (domain 11)
+# 터미널 B1 — bringup
+export TURTLEBOT3_MODEL=burger
+ros2 launch turtlebot3_bringup robot.launch.py
+
+# 터미널 B2 — Nav2 (map_server 없는 버전)
+ros2 launch ~/nav2_files/navigation2_no_map_server.launch.py \
+  params_file:=$HOME/nav2_files/burger.yaml
+
+# 터미널 B3 — (필요시) lifecycle 깨우기 + 확인
+ros2 service call /lifecycle_manager_navigation/manage_nodes \
+  nav2_msgs/srv/ManageLifecycleNodes "{command: 0}"
+ros2 lifecycle get /bt_navigator   # active 필수
+
+# 터미널 B4 — 패트롤 노드
+python3 ~/nav2_files/nearest_point_patrol.py --ros-args -p arrival_tolerance:=0.25
