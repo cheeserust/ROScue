@@ -9,3 +9,17 @@ loop closure 가 정말 문제가 된다면 mapper_params.yaml 의 do_loop_closi
 2. 더 잘 보게 5초 딜레이 추가
 3. 성준/하리 부탁드려서 박스 인식 yolo 검증
 4. launch 파일에 추가할수있는거 추가하기 --> 터미널 아끼기용
+
+잠재적 꼬임 3가지:
+
+1. resume_goal과 디스패처 republish의 경합 — 임무 중 디스패처는 republish_active_goals()에서 robot.in_mission이면 republish를 멈춤(L292). 이건 nav_status의 MISSION_*를 받아야 in_mission=True가 됨. 
+그런데 status 도착이 1Hz라 지연됨 → 임무 시작 직후 ~1초간 디스패처가 일반 goal을 계속 republish할 수 있고, 로봇측 target_callback은 MISSION 상태면 이를 resume_goal로 덮어씀(L의 target_callback). 
+짧은 윈도우지만 resume_goal이 예상과 다른 좌표로 바뀔 여지 있음.
+
+2. mission_acked 단방향성 — mission_acked가 한 번 True면 다시 mission을 안 냄(L323). 
+1회성 설계라 의도대로지만, 로봇이 임무를 abort하고 resume했는데 디스패처는 "acked=완료"로 간주 → 재시도 불가. 임무 실패 시 디스패처는 모름.
+
+3. goal_pose 직접 발행 노드와의 충돌 가능성 — 이건 코드가 아니라 환경 문제. 
+앞서 waffle1/goal_positions(팀원 암 노드)는 무관했지만, 혹시 다른 노드가 /goal_pose나 navigate_to_pose를 직접 호출하면 로봇측 상태기계가 모르는 goal이 들어와 꼬임. 현재는 그런 노드 없어 보임.
+
+원래 이동명령과 치명적으로 꼬이진 않습니다 — 채널 분리 + 로봇측 dedupe/상태기계 덕분. 다만 위 1·2는 임무 발동 순간의 타이밍 경합이라, 서버단 재구현 시 ack을 status 1Hz가 아니라 즉시성 있는 신호로 바꾸고, 임무 실패 시 acked 리셋 로직을 넣으면 깔끔해집니다.
