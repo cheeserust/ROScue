@@ -10,6 +10,8 @@ loop closure 가 정말 문제가 된다면 mapper_params.yaml 의 do_loop_closi
 3. 성준/하리 부탁드려서 박스 인식 yolo 검증
 4. launch 파일에 추가할수있는거 추가하기 --> 터미널 아끼기용
 
+6/13
+
 잠재적 꼬임 3가지:
 
 1. resume_goal과 디스패처 republish의 경합 — 임무 중 디스패처는 republish_active_goals()에서 robot.in_mission이면 republish를 멈춤(L292). 이건 nav_status의 MISSION_*를 받아야 in_mission=True가 됨. 
@@ -23,3 +25,9 @@ loop closure 가 정말 문제가 된다면 mapper_params.yaml 의 do_loop_closi
 앞서 waffle1/goal_positions(팀원 암 노드)는 무관했지만, 혹시 다른 노드가 /goal_pose나 navigate_to_pose를 직접 호출하면 로봇측 상태기계가 모르는 goal이 들어와 꼬임. 현재는 그런 노드 없어 보임.
 
 원래 이동명령과 치명적으로 꼬이진 않습니다 — 채널 분리 + 로봇측 dedupe/상태기계 덕분. 다만 위 1·2는 임무 발동 순간의 타이밍 경합이라, 서버단 재구현 시 ack을 status 1Hz가 아니라 즉시성 있는 신호로 바꾸고, 임무 실패 시 acked 리셋 로직을 넣으면 깔끔해집니다.
+
+6/13
+주행 종료 조건 --> 맵 크기? 이거 정하려면 맵 저장해야함 --> 맵 저장 여부 확인하는 gui + 맵 불러오는 코드 + 와플 속도 & 주행거리 계산 코드 (부정확함) = 굳이? 
+종료 후 초기 좌표로 복귀는 가능
+중앙서버가 start stop 명령을 주는데 와플이 현재 start 인지 stop 인지 모른다? 그래서 와플이 pc에게 자기 상태를 알려주는 역bridge노드 를 만들었다 --> 비효율적아닌가
+stop 이 정지하라는 명령인데 
