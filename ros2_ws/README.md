@@ -1,36 +1,24 @@
-# ros2_ws
+# ROS 2 Workspace
 
-ROS 2 workspace입니다.
+ROScue의 ROS 2 패키지를 보관하는 workspace입니다.
 
----
-
-## Expected Structure
+## Expected Packages
 
 ```text
-ros2_ws/
-└── src/
-    ├── roscue_bringup/
-    ├── roscue_mission_manager/
-    ├── roscue_interfaces/
-    ├── roscue_navigation/
-    ├── roscue_perception/
-    ├── roscue_manipulation/
-    └── roscue_web_bridge/
+ros2_ws/src/
+├── roscue_bringup/
+├── roscue_mission_manager/
+├── roscue_interfaces/
+├── roscue_navigation/
+├── roscue_perception/
+├── roscue_manipulation/
+└── roscue_web_bridge/
 ```
-
----
 
 ## Build
 
 ```bash
+cd ros2_ws
 colcon build
 source install/setup.bash
 ```
-
----
-
-## TODO
-
-- [ ] 실제 패키지명 확정
-- [ ] launch 파일 목록 작성
-- [ ] message/action/service 정의 추가

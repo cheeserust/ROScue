@@ -1,17 +1,17 @@
-# ai/yolo
+# YOLO
 
-YOLO 모델과 추론 관련 파일을 보관합니다.
+YOLO 모델, inference server, event gateway 코드를 보관합니다.
 
----
-
-## Expected Files
+## Expected Contents
 
 ```text
 ai/yolo/
-├── README.md
-├── labels.yaml
+├── models/
 ├── yolo_server.py
-└── configs/
+├── yolo_gateway.py
+└── README.md
 ```
 
-모델 가중치는 용량이 크면 `models/`에 두고 이곳에서는 경로만 관리합니다.
+## Related Docs
+
+- [Perception Documentation](../../docs/perception/)

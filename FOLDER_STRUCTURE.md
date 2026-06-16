@@ -1,48 +1,69 @@
 # Folder Structure
 
-이 문서는 ROScue 레포지토리의 폴더 구성 원칙을 설명합니다.
+ROScue 레포지토리의 폴더 구성 원칙입니다.
 
----
+## Principle
 
-## Top-Level Layout
+최상위 `README.md`는 프로젝트 소개와 문서 링크 허브로만 사용합니다. 세부 기술 설명은 `docs/` 하위 폴더의 `README.md`에 섹션 단위로 정리합니다.
+
+```text
+root README.md
+  → 짧은 프로젝트 소개 + Documentation 링크
+
+docs/<category>/README.md
+  → 해당 카테고리의 전체 내용
+  → 세부 파일로 쪼개지 않고 섹션과 목차로 이동
+```
+
+## Recommended Structure
 
 ```text
 ROScue/
-├── README.md                      # 프로젝트 첫 화면
-├── FOLDER_STRUCTURE.md            # 폴더 구성 설명
-├── docs/                          # 발표/설계/운영 문서
-├── ros2_ws/                       # ROS 2 workspace
-├── web/                           # Flask/Web UI 코드
-├── ai/                            # YOLO, RAG, LeRobot 관련 코드/설정
-├── embedded/                      # STM32 펌웨어 및 임베디드 자료
-├── maps/                          # SLAM map 파일
-├── models/                        # YOLO/IL 모델 가중치
-├── scripts/                       # 실행/배포/유틸 스크립트
-└── tests/                         # 테스트 코드와 시나리오
+├── README.md
+├── FOLDER_STRUCTURE.md
+├── docs/
+│   ├── README.md
+│   ├── scenario/README.md
+│   ├── setup/README.md
+│   ├── runbook/README.md
+│   ├── ros_interfaces/README.md
+│   ├── architecture/README.md
+│   ├── navigation/README.md
+│   ├── perception/README.md
+│   ├── manipulation/README.md
+│   ├── llm_rag/README.md
+│   ├── embedded/README.md
+│   ├── web/README.md
+│   ├── troubleshooting/README.md
+│   └── assets/README.md
+├── ros2_ws/README.md
+├── web/README.md
+├── ai/README.md
+├── embedded/README.md
+├── maps/README.md
+├── models/README.md
+├── scripts/README.md
+└── tests/README.md
 ```
 
----
+## Why one README per category?
 
-## Design Rule
+GitHub에서 폴더를 클릭하면 해당 폴더 안의 `README.md`가 자동으로 표시됩니다. 따라서 사용자는 최상위 README의 링크를 클릭한 뒤, 같은 페이지 안의 섹션 목차를 통해 필요한 내용으로 이동할 수 있습니다.
 
-- 최상위 `README.md`는 짧은 프로젝트 소개와 링크 허브 역할만 합니다.
-- 상세 설명은 `docs/` 하위 문서로 분리합니다.
-- 코드 폴더에는 각 폴더별 `README.md`를 두어 목적과 실행법을 기록합니다.
-- 이미지, 다이어그램, GIF는 `docs/assets/`에 모읍니다.
-- 발표 슬라이드에서 나온 내용은 `docs/`의 해당 영역으로 분리합니다.
+## Section Anchor Rule
 
----
+각 카테고리 README에는 아래처럼 명시적 anchor를 둡니다.
 
-## Documentation Folders
+```md
+## On this page
 
-| Folder | Purpose |
-|---|---|
-| `docs/architecture/` | 전체 아키텍처, 하드웨어, ROS_DOMAIN_ID, namespace, Mission Manager |
-| `docs/navigation/` | Pinky SLAM, 좌표 발행, Nav2 다중 로봇 주행 |
-| `docs/perception/` | YOLO 탐지, 모델 비교, 이벤트 인터페이스 |
-| `docs/manipulation/` | 박스 개방, 모방학습, 리더-팔로워 조작 |
-| `docs/llm_rag/` | RAG 응답 흐름, 등록 객체 정책, 절차 안내 |
-| `docs/embedded/` | STM32 인터페이스, Bomb_A/B 하드웨어, I/O map |
-| `docs/web/` | Web UI, mission control, dual YOLO dashboard |
-| `docs/troubleshooting/` | 문제 원인과 해결 기록 |
-| `docs/assets/` | 문서에 사용하는 이미지와 GIF |
+- [System Architecture](#system-architecture)
+- [Hardware Architecture](#hardware-architecture)
+
+<a id="system-architecture"></a>
+## 1. System Architecture
+
+...
+```
+
+한국어 제목의 자동 anchor는 환경에 따라 불편할 수 있으므로, 영어 기반 id를 직접 지정하는 방식을 권장합니다.

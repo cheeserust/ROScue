@@ -1,21 +1,16 @@
-# ai/rag
+# RAG
 
-RAG 문서와 LLM 안내 모듈을 보관합니다.
+등록 객체 절차 문서, ChromaDB, Ollama/Gemma 호출 코드를 보관합니다.
 
----
-
-## Expected Files
+## Expected Contents
 
 ```text
 ai/rag/
-├── README.md
 ├── bomb_procedures.md
 ├── procedure_rag.py
-└── safety_docs.md
+└── README.md
 ```
 
----
+## Related Docs
 
-## Rule
-
-미등록 객체는 LLM에게 추측시키지 않고 고정 응답으로 처리합니다.
+- [LLM/RAG Documentation](../../docs/llm_rag/)

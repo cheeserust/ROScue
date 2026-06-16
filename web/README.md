@@ -1,36 +1,16 @@
-# web
+# Web
 
-Flask 기반 Web/App UI 코드 폴더입니다.
+Flask 기반 Web/App UI 코드를 보관합니다.
 
----
+## Role
 
-## Expected Files
+- mission start/stop
+- manual done
+- emergency stop
+- dual YOLO dashboard
+- LLM/RAG safety notice panel
 
-```text
-web/
-├── web_server.py
-├── web_gateway.py
-├── templates/
-│   └── index.html
-└── static/
-```
+## Related Docs
 
----
-
-## Responsibilities
-
-```text
-- 미션 시작/정지 버튼
-- WF1/WF2 상태 표시
-- dual YOLO dashboard 표시
-- LLM/RAG 안내문 표시
-- manual_done / unknown_report 입력
-```
-
----
-
-## TODO
-
-- [ ] 실제 API 문서 링크
-- [ ] 실행 명령 추가
-- [ ] 화면 캡처 추가
+- [Web UI Documentation](../docs/web/)
+- [LLM/RAG Documentation](../docs/llm_rag/)

@@ -1,17 +1,7 @@
-# ai/lerobot
+# LeRobot / Imitation Learning
 
-LeRobot / 모방학습 기반 manipulation 관련 파일을 보관합니다.
+박스 개방 policy, 추론 서버, 데이터 수집 스크립트를 보관합니다.
 
----
+## Related Docs
 
-## Expected Files
-
-```text
-ai/lerobot/
-├── README.md
-├── policy_inference.py
-├── configs/
-└── checkpoints/
-```
-
-checkpoint 파일은 용량이 크면 `models/`에서 관리합니다.
+- [Manipulation Documentation](../../docs/manipulation/)

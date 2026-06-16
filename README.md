@@ -3,7 +3,7 @@
 > **ROS 2 기반 지능형 협업 위험 객체 대응 로봇 시스템**  
 > SLAM Mapping · Nav2 Navigation · YOLO Detection · Imitation Learning Manipulation · LLM/RAG Guide · Dual-Robot Manual Control
 
-<!-- 대표 이미지 또는 데모 GIF 추가 예정 -->
+<!-- TODO: 대표 이미지 또는 데모 GIF 추가 -->
 <!-- ![ROScue Demo](docs/assets/demo_scenario.png) -->
 
 ---
@@ -12,7 +12,7 @@
 
 **ROScue**는 ROS 2 기반 다중 로봇 협업 시스템입니다.
 
-Pinky Mapping Robot이 SLAM 기반 지도를 생성하고, WF1/WF2 로봇은 작성된 지도를 기반으로 자율 탐색을 수행합니다. 탐색 중 YOLO로 박스를 탐지하고, 매니퓰레이터와 모방학습 policy를 이용해 박스를 개방합니다. 내부에서 등록 객체가 탐지되면 중앙 서버가 파트너 로봇을 호출하고, 운영자는 Web UI에서 두 로봇을 수동 조작하여 대응 절차를 수행합니다.
+Pinky 로봇이 SLAM 기반 지도를 생성하고, WF1/WF2 로봇은 작성된 지도를 기반으로 자율 탐색을 수행합니다. 탐색 중 YOLO로 박스를 탐지하고, 매니퓰레이터와 모방학습 policy를 이용해 박스를 개방합니다. 내부에서 등록 객체가 탐지되면 중앙 서버가 파트너 로봇을 호출하고, 운영자는 Web UI에서 두 로봇을 수동 조작하여 대응 절차를 수행합니다.
 
 ---
 
@@ -37,10 +37,10 @@ Pinky Mapping Robot이 SLAM 기반 지도를 생성하고, WF1/WF2 로봇은 작
 |---|---|
 | [Folder Structure](FOLDER_STRUCTURE.md) | 레포지토리 폴더 구성 원칙 |
 | [Docs Home](docs/) | 전체 문서 목차 |
-| [Scenario](docs/scenario.md) | 전체 미션 시나리오와 Phase 0~3 흐름 |
-| [Setup](docs/setup.md) | 개발 환경 설치 및 기본 설정 |
-| [Runbook](docs/runbook.md) | 데모 실행 순서 |
-| [ROS Interfaces](docs/ros_interfaces.md) | topic, service, action 정의 |
+| [Scenario](docs/scenario/) | 전체 미션 시나리오와 Phase 0~3 흐름 |
+| [Setup](docs/setup/) | 개발 환경 설치 및 기본 설정 |
+| [Runbook](docs/runbook/) | 데모 실행 순서 |
+| [ROS Interfaces](docs/ros_interfaces/) | topic, service, action 정의 |
 | [Architecture](docs/architecture/) | 전체 시스템, 하드웨어, ROS_DOMAIN_ID, namespace 구조 |
 | [Navigation](docs/navigation/) | Pinky SLAM, 좌표 발행, Nav2 다중 로봇 주행 |
 | [Perception](docs/perception/) | YOLO 박스 탐지, 내부 객체 탐지, 모델 성능 비교 |
@@ -52,23 +52,12 @@ Pinky Mapping Robot이 SLAM 기반 지도를 생성하고, WF1/WF2 로봇은 작
 
 ---
 
-## Robot Roles
-
-| Robot | Role |
-|---|---|
-| `Pinky` | SLAM mapping and coordinate generation |
-| `WF1` | Autonomous exploration, box detection, manipulation |
-| `WF2` | Partner robot, cooperative response, manipulation |
-| `Central Server PC` | Mission Manager, Web UI, AI/RAG server, robot coordination |
-
----
-
 ## System at a Glance
 
 ```mermaid
 flowchart LR
     UI[Web / App UI] --> Server[Central Server PC]
-    Server --> Mission[ROS2 Mission Manager]
+    Server --> Mission[ROS 2 Mission Manager]
     Mission --> Nav[SLAM / Nav2]
     Mission --> Vision[YOLO Perception]
     Mission --> Manip[Manipulation / LeRobot]
@@ -83,18 +72,14 @@ flowchart LR
 
 ---
 
-## Tech Stack
+## Robot Roles
 
-| Layer | Stack |
+| Robot | Role |
 |---|---|
-| Middleware | ROS 2 Jazzy |
-| Navigation | SLAM Toolbox, Nav2 |
-| Perception | YOLO, PyTorch, OpenCV |
-| Manipulation | OMX Arm, LeRobot, Imitation Learning |
-| Web | Flask, HTML, CSS, JavaScript |
-| LLM/RAG | Ollama, Gemma, ChromaDB |
-| Embedded | STM32, LCD, LED, Button, Buzzer |
-| Hardware | Raspberry Pi 4, OpenCR, Dynamixel, LiDAR, Camera |
+| `Pinky` | SLAM mapping and coordinate generation |
+| `WF1` | Autonomous exploration, box detection, manipulation |
+| `WF2` | Partner robot, cooperative response, manipulation |
+| `Central Server PC` | Mission Manager, Web UI, AI/RAG server, robot coordination |
 
 ---
 
@@ -105,6 +90,20 @@ ROScue/
 ├── README.md
 ├── FOLDER_STRUCTURE.md
 ├── docs/
+│   ├── README.md
+│   ├── scenario/
+│   ├── setup/
+│   ├── runbook/
+│   ├── ros_interfaces/
+│   ├── architecture/
+│   ├── navigation/
+│   ├── perception/
+│   ├── manipulation/
+│   ├── llm_rag/
+│   ├── embedded/
+│   ├── web/
+│   ├── troubleshooting/
+│   └── assets/
 ├── ros2_ws/
 ├── web/
 ├── ai/
@@ -119,7 +118,7 @@ ROScue/
 
 ## Quick Start
 
-> 실제 패키지명과 launch 파일이 확정되면 업데이트합니다.
+> 실제 launch 파일과 패키지명이 확정되면 업데이트합니다.
 
 ```bash
 git clone https://github.com/<ORG_OR_USER>/ROScue.git
@@ -131,8 +130,6 @@ cd ros2_ws
 colcon build
 source install/setup.bash
 ```
-
-자세한 실행 순서는 [Runbook](docs/runbook.md)을 참고합니다.
 
 ---
 

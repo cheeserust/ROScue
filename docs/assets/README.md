@@ -1,28 +1,34 @@
 # Assets
 
-문서에 사용하는 이미지, GIF, 다이어그램을 보관합니다.
+[← Docs Home](../)
 
----
+문서에 사용하는 이미지, GIF, 다이어그램을 보관합니다.
 
 ## Recommended Files
 
-| File | Description |
+| File | Used In |
 |---|---|
-| `cover.png` | README 상단 대표 이미지 |
-| `demo_scenario.png` | 데모 시나리오 이미지 |
-| `system_architecture.png` | 전체 시스템 아키텍처 |
-| `hardware_architecture.png` | 하드웨어 시스템 구성도 |
-| `domain_bridge.png` | ROS_DOMAIN_ID / namespace 구조 |
-| `mission_flow.png` | 시스템 동작 흐름 다이어그램 |
-| `yolo_benchmark.png` | YOLO 모델별 수치 비교 |
-| `imitation_learning_system.png` | 모방학습 시스템 구성 |
-| `llm_rag_flow.png` | LLM/RAG 통합 구조 |
-| `stm32_bomb_ab.png` | Bomb_A/B 하드웨어 구성 |
+| `demo_scenario.png` | root README, Scenario |
+| `system_architecture.png` | Architecture |
+| `hardware_architecture.png` | Architecture |
+| `domain_bridge.png` | Architecture / Troubleshooting |
+| `yolo_benchmark.png` | Perception |
+| `imitation_learning_system.png` | Manipulation |
+| `box_open_manual.png` | Manipulation |
+| `llm_rag_flow.png` | LLM/RAG |
+| `stm32_bomb_ab.png` | Embedded |
+| `web_ui.png` | Web UI |
 
----
+## Usage
 
-## Usage Example
+From `docs/<category>/README.md`:
 
 ```md
 ![System Architecture](../assets/system_architecture.png)
+```
+
+From root `README.md`:
+
+```md
+![ROScue Demo](docs/assets/demo_scenario.png)
 ```

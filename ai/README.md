@@ -1,13 +1,11 @@
-# ai
+# AI
 
-AI 관련 코드와 설정을 보관합니다.
-
----
+YOLO, RAG, LeRobot/모방학습 관련 코드를 보관합니다.
 
 ## Subfolders
 
-| Folder | Description |
+| Folder | Role |
 |---|---|
-| [yolo](yolo/) | YOLO 모델, 추론 서버, label 설정 |
-| [rag](rag/) | RAG 문서, ChromaDB, LLM 안내 모듈 |
-| [lerobot](lerobot/) | LeRobot/모방학습 policy 관련 코드 |
+| [yolo](yolo/) | YOLO 모델, inference server |
+| [rag](rag/) | RAG 문서 검색, LLM 안내 생성 |
+| [lerobot](lerobot/) | LeRobot policy, imitation learning inference |
