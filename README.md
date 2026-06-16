@@ -210,7 +210,7 @@ EOD 요원 평균 사망 연령
 
 **Robotics & Middleware**
 
-![ROS2](https://img.shields.io/badge/ROS2_Humble-22314E?style=flat-square&logo=ros&logoColor=white)
+![ROS2](https://img.shields.io/badge/ROS2_Jazzy-22314E?style=flat-square&logo=ros&logoColor=white)
 ![Nav2](https://img.shields.io/badge/Nav2-22314E?style=flat-square&logo=ros&logoColor=white)
 ![SLAM](https://img.shields.io/badge/SLAM_Toolbox-22314E?style=flat-square&logo=ros&logoColor=white)
 ![MicroROS](https://img.shields.io/badge/Micro--ROS-22314E?style=flat-square&logo=ros&logoColor=white)
