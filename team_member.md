@@ -12,7 +12,7 @@
     <td align="center" width="160px">
       <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
       <b>공성우</b><br>
-      <sub>Manipulation / IL</sub>
+      <sub>TBD</sub>
     </td>
     <td align="center" width="160px">
       <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
@@ -41,11 +41,6 @@
       <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
       <b>임하리</b><br>
       <sub>TBD</sub>
-    </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>ROScue</b><br>
-      <sub>Team Project</sub>
     </td>
   </tr>
 </table>
