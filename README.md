@@ -1,231 +1,408 @@
 # ROScue
 
 > **ROS 2 기반 지능형 협업 위험 객체 대응 로봇 시스템**  
-> Autonomous exploration, object detection, box inspection, and dual-robot manual response system.
+> SLAM mapping, autonomous navigation, YOLO perception, imitation-learning manipulation, and dual-robot manual response.
 
-<!-- TODO: 발표 표지 이미지 또는 데모 GIF 추가 -->
-<!-- ![ROScue Demo](docs/assets/demo.gif) -->
+<!-- TODO: demo gif or cover image -->
+<!-- ![ROScue Demo](docs/assets/demo_scenario.png) -->
 
 ---
 
-## 1. Overview
+## 1. Project Overview
 
 **ROScue**는 ROS 2 기반 다중 로봇 협업 시스템입니다.  
-로봇은 SLAM으로 실내 지도를 생성하고, Nav2 기반 자율 탐색을 수행하며, YOLO 기반 객체 탐지를 통해 상자와 위험 객체 후보를 인식합니다. 위험 객체 후보가 확인되면 중앙 서버가 파트너 로봇을 호출하고, 운영자는 Web UI를 통해 두 로봇을 수동 조작하여 대응 절차를 수행합니다.
+Pinky Mapping Robot이 SLAM 기반 지도를 생성하고, WF1/WF2 주행·해체 로봇이 같은 지도를 기반으로 자율 탐색, 박스 식별, 박스 개방, 내부 객체 탐지, 협동 수동 대응을 수행합니다.
 
-본 프로젝트의 핵심 목표는 다음과 같습니다.
+중앙 서버 PC는 전체 미션 상태를 관리하며, Web/App UI, ROS 2 Mission Manager, YOLO perception, Nav2 navigation, imitation learning inference, LLM/RAG 안내 시스템을 통합합니다.
+
+### Key Objectives
 
 - SLAM 기반 실내 지도 생성
-- 지도 기반 자율 탐색
-- YOLO 기반 상자 및 위험 객체 탐지
-- 로봇팔 기반 상자 개방 및 내부 검사
-- 중앙 서버 기반 다중 로봇 상태 관리
-- 위험 객체 발견 시 파트너 로봇 소환
-- Web UI 기반 dual manual operation
-- LLM/RAG 기반 상황 설명 및 안전 안내
+- 작성된 지도 기반 WF1/WF2 자율 주행
+- 좌표 DB 기반 목표 좌표 발행 및 가까운 로봇 배정
+- YOLO 기반 박스 및 내부 객체 탐지
+- 모방학습 기반 박스 개방 동작 수행
+- 두 로봇 기반 협동 대응 및 원격 수동 조작
+- LLM/RAG 기반 등록 객체 절차 안내
+- STM32 기반 등록 객체 인터페이스 연동
 
 > ⚠️ **Safety Notice**  
-> 이 프로젝트는 교육 및 연구 목적의 로봇 시스템입니다.  
-> 실제 폭발물 제작, 해체, 무력화 절차를 제공하지 않으며, 실제 위험물 대응은 전문 인력과 안전 규정을 따라야 합니다.
+> 본 프로젝트는 교육 및 연구 목적의 로봇 시스템입니다.  
+> 실제 위험물 제작, 해체, 무력화 절차를 제공하지 않으며, 실제 위험 상황에서는 반드시 전문 인력과 안전 규정을 따라야 합니다.
 
 ---
 
-## 2. Project Scenario
+## 2. Demo Scenario
 
-ROScue의 전체 미션은 4개 Phase로 구성됩니다.
+ROScue 데모는 다음 5단계로 구성됩니다.
 
-### Phase 0 — SLAM 지도 생성
+| Step | Scenario | Description |
+|---:|---|---|
+| 1 | 사전 준비 및 자율 탐색 | SLAM 매핑, 지도 로딩, 두 로봇 자율 탐색 시작 |
+| 2 | 박스 탐색 및 발견 | YOLO 기반 박스 식별, close/open 상자 감지 시 접근 |
+| 3 | 박스 개방 및 내부 스캔 | 모방학습 기반 박스 개방, 내부 객체 탐지, 빈 박스 복귀 |
+| 4 | 로봇 호출 및 협업 | 위험 객체 감지 시 파트너 로봇 호출, 두 로봇 수동 조작 모드 전환 |
+| 5 | 원격 대응 및 복귀 | 운영자가 수동 조작 완료 후 자율 탐색 재시작 또는 미션 종료 |
 
-운영자가 Web UI에서 로봇을 선택하고 SLAM을 시작합니다.  
-주행팀은 로봇을 수동 조작하여 공간 전체를 주행하고, SLAM 스택을 통해 지도를 생성합니다.
+---
 
-```text
-IDLE
-  └── /slam/start: START
-        ↓
-PINKY
-  └── /slam/done: DONE
-        ↓
-IDLE
+## 3. System Architecture
+
+### 3.1 Logical Architecture
+
+```mermaid
+flowchart LR
+    UI[Web / App UI] --> Flask[Flask Server]
+    Flask --> Manager[ROS2 Mission Manager]
+    Manager --> Perception[AI Perception / YOLO]
+    Manager --> Navigation[Navigation / SLAM / Nav2]
+    Manager --> Manipulation[Manipulation / Imitation Learning]
+    Manager --> RAG[LLM / RAG Safety Guide]
+
+    Navigation --> Pinky[Pinky Mapping Robot]
+    Navigation --> WF1[WF1 Robot]
+    Navigation --> WF2[WF2 Robot]
+
+    Manipulation --> Arm1[WF1 Manipulator]
+    Manipulation --> Arm2[WF2 Manipulator]
+
+    WF1 --> STM1[STM32 Object Interface]
+    WF2 --> STM2[STM32 Object Interface]
 ```
 
-실패 시:
+### 3.2 Hardware Architecture
 
-```text
-PINKY
-  └── /slam/done: FAILED
-        ↓
-RECOVER
+ROScue의 하드웨어는 관제 PC, Raspberry Pi 4, OpenCR, Dynamixel, LiDAR, 카메라, 매니퓰레이터, STM32 기반 등록 객체 인터페이스로 구성됩니다.
+
+| Component | Role |
+|---|---|
+| High-Performance PC | 관제, AI 서버, LLM/RAG, 모방학습 추론 서버 |
+| Raspberry Pi 4 | 상위 제어기, ROS 2 통신, 카메라/LiDAR 데이터 처리 |
+| OpenCR | 하위 제어기, Dynamixel 및 주행 하드웨어 제어 |
+| Camera | 상황 관찰, YOLO 입력 영상 스트림 |
+| LiDAR | 공간 정보, SLAM 및 Nav2 입력 |
+| Manipulator | 박스 개방, 수동 조작, 리더-팔로워 제어 |
+| Dynamixel | 주행 구동 및 엔코더 상태 피드백 |
+| STM32 | 등록 객체 인터페이스, 버튼/LCD/LED/Buzzer/센서 제어 |
+
+---
+
+## 4. Robot Roles
+
+### 4.1 Pinky Mapping Robot
+
+Pinky Mapping Robot은 실내 공간의 SLAM 지도를 생성하고, 지도 및 좌표 정보를 중앙 서버로 전달합니다.
+
+주요 역할:
+
+- SLAM 기반 지도 생성
+- `/map`, `/map_metadata` 전달
+- RViz2 clicked point 또는 랜덤 좌표 발행
+- 좌표 DB 저장을 위한 point 데이터 제공
+
+### 4.2 WF1 / WF2 Robots
+
+WF1과 WF2는 실제 자율 주행, 박스 탐지, 박스 개방, 내부 스캔, 협동 대응을 담당합니다.
+
+주요 역할:
+
+- Nav2 기반 목표 좌표 이동
+- YOLO 기반 박스 탐지
+- 박스 접근 및 내부 검사
+- 매니퓰레이터 기반 박스 개방
+- 위험 객체 감지 시 협동 수동 모드 진입
+
+### 4.3 Central Server PC
+
+중앙 서버 PC는 Mission Manager, 좌표 DB, domain bridge, Web UI, AI 서버를 통합합니다.
+
+주요 역할:
+
+- 전체 미션 상태 관리
+- 로봇별 현재 위치 수신
+- 좌표 DB 저장
+- 가까운 로봇에게 목표 좌표 배정
+- WF1/WF2 goal pose 전송
+- 주행 취소 및 미션 정지 처리
+- YOLO 이벤트 수신
+- LLM/RAG 안내 생성
+
+---
+
+## 5. Domain and Namespace Architecture
+
+ROScue는 로봇별 독립 ROS_DOMAIN_ID와 namespace를 사용합니다.
+
+| System | ROS_DOMAIN_ID | Namespace | Role |
+|---|---:|---|---|
+| Central Server PC | 10 | `/server` | Mission Manager, DB, bridge, Web UI |
+| Pinky Mapping Robot | 13 | `/pinky` | SLAM mapping |
+| WF1 Robot | 14 | `/wf1` | Navigation and manipulation |
+| WF2 Robot | 15 | `/wf2` | Navigation and manipulation |
+
+### Final Communication Structure
+
+```mermaid
+flowchart TB
+    Server[Central Server PC\nROS_DOMAIN_ID=10]
+
+    Pinky[Pinky Mapping Robot\nROS_DOMAIN_ID=13\nnamespace=/pinky]
+    WF1[WF1 Robot\nROS_DOMAIN_ID=14\nnamespace=/wf1]
+    WF2[WF2 Robot\nROS_DOMAIN_ID=15\nnamespace=/wf2]
+
+    Server <--> BridgeP[domain_bridge]
+    Server <--> Bridge1[domain_bridge]
+    Server <--> Bridge2[domain_bridge]
+
+    BridgeP <--> Pinky
+    Bridge1 <--> WF1
+    Bridge2 <--> WF2
 ```
 
-> TODO: `PINKY`가 로봇 이름인지, SLAM 상태 이름인지 용어 확정 필요
+### Bridge Policy
+
+- 모든 로봇은 독립 domain에서 기본 topic을 사용합니다.
+- 중앙 서버 PC에서 domain별 bridge를 운영합니다.
+- WF1/WF2의 map server는 제거하고, Pinky가 만든 `/map`을 bridge로 전달합니다.
+- 중앙 서버 PC에서 robot별 topic을 구분합니다.
+- 로봇 내부 remap 문제를 줄이고, 서버-로봇 간 bridge 구간에서만 topic을 분리합니다.
+
+---
+
+## 6. Mission Flow
+
+### Phase 0 — SLAM Mapping
+
+```text
+운영자 SLAM 시작
+→ Pinky Mapping Robot 수동 주행
+→ SLAM 지도 생성
+→ /map, /map_metadata 중앙 서버 전달
+→ 좌표 DB 저장
+→ WF1/WF2 자율 주행 준비
+```
+
+State transition:
+
+```text
+IDLE → SLAM_MAPPING → IDLE
+```
 
 ---
 
 ### Phase 1 — Autonomous Exploration & Box Detection
 
-운영자가 Web UI에서 미션을 시작하면 로봇은 `EXPLORE` 상태로 전환됩니다.  
-Nav2 내비게이션을 기반으로 지도 공간을 탐색하며, 손목 카메라의 YOLO 모델은 `BOX_DETECTION_MODEL` 모드로 상자를 탐지합니다.
-
 ```text
-IDLE
-  └── mission_start
-        ↓
-EXPLORE
-  └── BOX_FOUND
-        ↓
-APPROACH
+운영자 미션 시작
+→ WF1/WF2 자율 탐색
+→ YOLO 기반 close/open 박스 탐지
+→ 박스 좌표 등록
+→ 목표 지점 접근
 ```
 
-상자가 감지되면 중앙 서버는 box registry에 신규 박스를 등록합니다.  
-기존 박스와 0.5 m 이내라면 중복 박스로 처리합니다.
+State transition:
+
+```text
+IDLE → EXPLORE → APPROACH
+```
 
 ---
 
 ### Phase 2 — Box Opening & Internal Scan
 
-로봇이 상자 0.4 m 앞까지 접근하면 Nav2를 정지하고, 로봇팔을 이용해 상자 뚜껑을 엽니다.  
-뚜껑 개방 후 YOLO 모드를 `EXPLOSIVE_DETECTION_MODEL`로 전환하고 상자 내부를 검사합니다.
-
 ```text
-APPROACH
-  └── REACHED
-        ↓
-OPEN_BOX_COVER
-  └── OPEN_OK
-        ↓
-SCAN
+목표 박스 접근 완료
+→ 매니퓰레이터 위치 정렬
+→ 모방학습 기반 박스 개방
+→ 내부 카메라 스캔
+→ YOLO 기반 Empty / Bomb_A / Bomb_B 판단
 ```
 
-분기:
+State transition:
 
 ```text
-SCAN
-  ├── EMPTY or T_scan timeout
-  │     ↓
-  │   EXPLORE
-  │
-  └── EXPLOSIVE_FOUND
-        ↓
-      WAIT_PARTNER
+APPROACH → OPEN_BOX_COVER → SCAN
 ```
 
 ---
 
 ### Phase 3 — Dual-Robot Cooperative Response
 
-위험 객체 후보가 감지되면 발견 로봇은 `WAIT_PARTNER` 상태로 진입합니다.  
-중앙 서버는 파트너 로봇의 현재 작업을 선점 취소하고, 파트너를 상자 옆 지정 위치로 이동시킵니다.
-
 ```text
-WAIT_PARTNER
-  └── partner_arrived
-        ↓
-DUAL_MANUAL
+Bomb_A/B 감지
+→ 발견 로봇 WAIT_PARTNER
+→ 파트너 로봇 호출
+→ 두 로봇 DUAL_MANUAL 진입
+→ 운영자가 원격 수동 조작
+→ 완료 후 탐색 재개 또는 임무 종료
 ```
 
-운영자는 Web UI에서 두 로봇 팔을 수동 조작합니다.  
-처리 완료 후 운영자가 완료 버튼을 누르면 box 상태는 `RESOLVED`로 전환됩니다.
+State transition:
 
 ```text
-DUAL_MANUAL
-  └── manual_done
-        ↓
-EXPLORE
+SCAN → WAIT_PARTNER → DUAL_MANUAL → EXPLORE
 ```
 
 ---
 
-## 3. System Architecture
+## 7. Navigation and Coordinate Dispatch
+
+Pinky가 작성한 지도와 좌표 정보는 중앙 서버를 통해 WF1/WF2에 전달됩니다.
+
+### Coordinate Dispatch Flow
+
+```text
+1. Pinky 수동 주행
+2. SLAM 지도 작성
+3. RViz2 clicked_point 또는 랜덤 좌표 발행
+4. 중앙 서버가 좌표 DB에 저장
+5. WF1/WF2 현재 위치 수신
+6. 좌표와 각 로봇 사이 거리 계산
+7. 가까운 로봇에게 goal pose 전달
+```
+
+### Main Topics
+
+| Topic | Direction | Description |
+|---|---|---|
+| `/map` | Pinky → Server → WF1/WF2 | SLAM map |
+| `/map_metadata` | Pinky → Server → WF1/WF2 | Map metadata |
+| `/clicked_point` | Pinky/RViz2 → Server | 수동 지정 좌표 |
+| `/wf1/goal_pose` | Server → WF1 | WF1 목표 좌표 |
+| `/wf2/goal_pose` | Server → WF2 | WF2 목표 좌표 |
+| `/wf1/amcl_pose` | WF1 → Server | WF1 현재 위치 |
+| `/wf2/amcl_pose` | WF2 → Server | WF2 현재 위치 |
+| `/driving_command` | Server → Pinky | SLAM start/stop command |
+| `/cancel_navigation` | Server → WF1/WF2 | 주행 취소 |
+
+---
+
+## 8. Perception
+
+ROScue는 YOLO 기반으로 박스와 내부 등록 객체를 탐지합니다.
+
+### Detection Modes
+
+| Mode | Target |
+|---|---|
+| `BOX_DETECTION_MODEL` | close box, open box |
+| `EXPLOSIVE_DETECTION_MODEL` | Empty, Bomb_A, Bomb_B |
+
+### YOLO Model Benchmark
+
+| Model | mAP50-95 | Recall | Precision |
+|---|---:|---:|---:|
+| YOLO10m | 93.90% | 99.66% | 99.64% |
+| YOLO11m | 94.11% | 99.71% | 99.89% |
+| YOLO26m | 95.21% | 99.71% | 99.91% |
+
+> TODO: Dataset size, training condition, validation split, and inference device details.
+
+---
+
+## 9. Manipulation and Imitation Learning
+
+박스 개방 동작은 매니퓰레이터와 모방학습 기반 policy를 사용합니다.
+
+### Box Open Motion Sequence
+
+```text
+접근 위치 조정
+→ 손잡이 인식
+→ 엔드이펙터 정렬
+→ 전진 및 파지
+→ 상승 동작
+→ 지정 위치 이동
+→ 파지 해제 및 복귀
+```
+
+### Imitation Learning System
 
 ```mermaid
 flowchart LR
-    Operator[Operator Web UI] --> Server[Central Server / Mission Manager]
-
-    Server --> MissionFSM[Mission FSM]
-    Server --> BoxRegistry[Box Registry]
-    Server --> RobotRegistry[Robot State Registry]
-    Server --> Queue[Explosive Queue]
-
-    Server <--> LLM[LLM/RAG Safety Server]
-    Server <--> YOLO[YOLO Event Gateway]
-
-    Server <--> R1[Robot 1]
-    Server <--> R2[Robot 2]
-
-    R1 --> R1Nav[Nav2 / SLAM]
-    R1 --> R1Arm[Arm Control]
-    R1 --> R1Cam[Wrist Camera / YOLO]
-    R1 --> R1STM[STM32 Low-level Device]
-
-    R2 --> R2Nav[Nav2 / SLAM]
-    R2 --> R2Arm[Arm Control]
-    R2 --> R2Cam[Wrist Camera / YOLO]
-    R2 --> R2STM[STM32 Low-level Device]
+    Cam1[cam_1] --> RPi[Raspberry Pi]
+    Cam2[cam_2] --> RPi
+    RPi <--> PC[PC Inference Server]
+    Leader[Manipulator Leader Arm] --> PC
+    PC --> RPi
+    RPi --> Follower[Robot Manipulator]
 ```
 
----
+### Robustness Strategy
 
-## 4. Core Features
-
-### 4.1 SLAM Mapping
-
-- SLAM 시작/종료 명령을 중앙 서버에서 관리
-- 지도 생성 완료 시 로봇 상태를 `IDLE`로 복귀
-- 실패 시 `RECOVER` 상태로 전환
-
-### 4.2 Autonomous Exploration
-
-- Nav2 기반 지도 탐색
-- 탐색 중 YOLO 상자 탐지
-- 발견 좌표 저장 및 중복 박스 필터링
-
-### 4.3 Visual Servo Approach
-
-- 상자 감지 후 Nav2 정지
-- YOLO bbox 기반 비주얼 서보 접근
-- 목표 거리: 상자 전방 약 0.4 m
-
-### 4.4 Box Cover Opening
-
-- 로봇팔 토크 해제
-- 모방학습 또는 사전 정의된 액션으로 상자 뚜껑 개방
-- 실패 또는 타임아웃 시 `OPEN_FAILED` 처리
-
-### 4.5 Internal Object Scan
-
-- YOLO 모드 전환: `EXPLOSIVE_DETECTION_MODEL`
-- 검사 시간: `T_scan = 10s`
-- 결과:
-  - `EMPTY`
-  - `EXPLOSIVE_FOUND`
-  - `TIMEOUT`
-
-### 4.6 Dual Manual Operation
-
-- 파트너 로봇 호출
-- 두 로봇을 90° 분리된 위치에 배치
-- Web UI에서 두 로봇 팔 수동 조작
-- 운영자 완료 입력 후 box 상태 `RESOLVED`
-
-### 4.7 LLM/RAG Safety Guide
-
-- YOLO 탐지 결과를 기반으로 안전 안내 생성
-- 등록되지 않은 객체는 추측하지 않고 “정보 없음”으로 처리
-- 실제 해체 절차 자동 생성 금지
-- Web UI에 상황 설명 및 안내문 표시
+| Method | Description |
+|---|---|
+| Domain Randomization | 조명, 배경, 객체 색상, 질감, 센서 노이즈를 변화시키며 데이터 수집 |
+| State Perturbation | 불안정한 초기 상태에서 복구하는 데이터 수집 |
+| DAgger | 사용자 개입 데이터를 누적하여 어려운 상태 대응 성능 개선 |
 
 ---
 
-## 5. Mission State Machine
+## 10. LLM / RAG Response System
+
+ROScue는 YOLO 탐지 결과를 바탕으로 LLM/RAG 기반 안내를 생성합니다.
+
+### Response Flow
+
+```text
+카메라 영상 수신
+→ YOLO 탐지
+→ confidence 기준 확인
+→ 일정 시간 유지 조건 확인
+→ Web Server 탐지 결과 수신
+→ RAG 문서 검색
+→ LLM 안내문 생성
+→ Web UI 출력
+```
+
+### Registered and Unregistered Objects
+
+| Type | Example | Handling |
+|---|---|---|
+| Registered Object | Bomb_A, Bomb_B | 등록된 절차 문서 기반 안내 |
+| Empty | Empty | 등록 객체 없음 안내 |
+| Unregistered Object | Bomb_C | 정보 없음, 조작 중지, 관리자 확인 요청 |
+
+> LLM은 실제 로봇 제어권을 갖지 않습니다.  
+> 상태 전이, 정지, 파트너 호출, 수동 모드 전환은 Mission Manager가 수행합니다.
+
+---
+
+## 11. STM32 Object Interface
+
+프로젝트 등록 객체는 STM32 기반 인터페이스를 포함합니다.
+
+### Interface Components
+
+| Component | Role |
+|---|---|
+| Button A/B/C/D | 입력 버튼 |
+| LCD | 카운트다운 및 상태 표시 |
+| LED | 단계별 상태 표시 |
+| Buzzer | 경고음 출력 |
+| Light Sensor | 특정 조건 감지 |
+| Joystick | 상하좌우 조작 |
+| STM32 | 메인 제어기 |
+
+### LED Status Example
+
+| Color | Meaning |
+|---|---|
+| RED | 카운트다운 시작 또는 실패 |
+| YELLOW | 진행 중 또는 성공 |
+| GREEN | 단계별 성공 |
+
+---
+
+## 12. Mission State Machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> IDLE
 
-    IDLE --> PINKY: /slam/start START
-    PINKY --> IDLE: /slam/done DONE
-    PINKY --> RECOVER: /slam/done FAILED
+    IDLE --> SLAM_MAPPING: slam_start
+    SLAM_MAPPING --> IDLE: slam_done
+    SLAM_MAPPING --> RECOVER: slam_failed
 
     IDLE --> EXPLORE: mission_start
     EXPLORE --> APPROACH: BOX_FOUND
@@ -235,8 +412,8 @@ stateDiagram-v2
     OPEN_BOX_COVER --> SCAN: OPEN_OK
     OPEN_BOX_COVER --> EXPLORE: OPEN_FAILED / TIMEOUT
 
-    SCAN --> EXPLORE: EMPTY / T_scan timeout
-    SCAN --> WAIT_PARTNER: EXPLOSIVE_FOUND
+    SCAN --> EXPLORE: EMPTY
+    SCAN --> WAIT_PARTNER: BOMB_FOUND
 
     WAIT_PARTNER --> DUAL_MANUAL: partner_arrived
     WAIT_PARTNER --> RECOVER: partner_timeout
@@ -250,152 +427,49 @@ stateDiagram-v2
     SCAN --> IDLE: mission_stop
     WAIT_PARTNER --> IDLE: mission_stop
     DUAL_MANUAL --> IDLE: mission_stop
-
-    EXPLORE --> LOST: heartbeat_timeout
-    APPROACH --> LOST: heartbeat_timeout
-    SCAN --> LOST: heartbeat_timeout
 ```
 
 ---
 
-## 6. Robot States
+## 13. Tech Stack
 
-| State | Description |
-|---|---|
-| `IDLE` | 대기 상태 |
-| `PINKY` | SLAM 지도 생성 상태 |
-| `EXPLORE` | 자율 탐색 상태 |
-| `APPROACH` | 상자 접근 상태 |
-| `OPEN_BOX_COVER` | 상자 뚜껑 개방 상태 |
-| `SCAN` | 상자 내부 검사 상태 |
-| `WAIT_PARTNER` | 파트너 로봇 대기 상태 |
-| `SUMMONED` | 파트너 로봇 소환 상태 |
-| `DUAL_MANUAL` | 두 로봇 수동 조작 상태 |
-| `RECOVER` | 복구 필요 상태 |
-| `LOST` | heartbeat 단절 상태 |
+| Layer | Category | Technology | Role |
+|---|---|---|---|
+| Front-End | Web | HTML, CSS, JavaScript | 미션 시작, 수동 조작 인터페이스 |
+| Back-End | Flask Server | Python, Flask, OpenCV | 카메라 스트리밍, API 서버 |
+| Middleware | ROS2 Mission Manager | ROS 2, Python, State Machine | 상태 관리, 이벤트 핸들링 |
+| AI / ML | AI Perception | YOLO26m, PyTorch, OpenCV | 박스 탐지, 등록 객체 탐지 |
+| Navigation | Navigation | SLAM, Nav2, ROS 2 | 지도 작성, 경로 계획, 다중 로봇 제어 |
+| Manipulation | Robot Manipulation | OMX Arm, Imitation Learning, Leader-Follower | 박스 개방, 원격 조작 |
+| Embedded | Object Interface | STM32, LCD, LED, Button, Buzzer | 등록 객체 인터페이스 |
 
 ---
 
-## 7. Box States
+## 14. Troubleshooting Highlights
 
-| State | Description |
-|---|---|
-| `UNKNOWN` | 아직 검사 전 |
-| `CLEAR` | 등록 위험 객체 없음 |
-| `EXPLOSIVE_PENDING` | 위험 객체 후보 발견, 처리 대기 |
-| `OPEN_FAILED` | 뚜껑 개방 실패 |
-| `REVISIT` | 접근 실패 후 재방문 필요 |
-| `RESOLVED` | 운영자 처리 완료 |
-
----
-
-## 8. ROS 2 Interfaces
-
-> TODO: 메시지 타입은 구현 확정 후 `roscue_interfaces` 기준으로 업데이트
-
-### Topics
-
-| Topic | Direction | Description |
+| Issue | Cause | Solution |
 |---|---|---|
-| `/slam/start` | Server → Robot | SLAM 시작 명령 |
-| `/slam/done` | Robot → Server | SLAM 완료/실패 알림 |
-| `/yolo/event` | YOLO → Server | BOX_FOUND, EMPTY, EXPLOSIVE_FOUND 등 |
-| `/mission/state` | Server → UI | 현재 미션 상태 |
-| `/mission/emergency_stop` | UI → Server | 긴급 정지 |
-| `/<robot_ns>/cmd_vel` | Nav2/Controller → Robot | 로봇 속도 명령 |
-| `/<robot_ns>/odom` | Robot → ROS | odometry |
-| `/<robot_ns>/scan` | Robot → ROS | LiDAR scan |
-| `/<robot_ns>/heartbeat` | Robot → Server | 로봇 생존 신호 |
-
-### Actions
-
-| Action | Description |
-|---|---|
-| `/<robot_ns>/navigate_to_pose` | Nav2 목표 위치 이동 |
-| `/<robot_ns>/follow_target` | YOLO 기반 비주얼 서보 접근 |
-| `/<robot_ns>/open_box_cover` | 상자 뚜껑 개방 액션 |
-| `/<robot_ns>/arm_manual_control` | 수동 조작 모드 |
-
-### Example Namespace Convention
-
-현재 README에서는 추상 표기를 사용합니다.
-
-```text
-<robot_ns> = wf1 | wf2
-```
-
-또는 TurtleBot3 예제 기준:
-
-```text
-<robot_ns> = tb3_1 | tb3_2
-```
-
-> TODO: 최종 레포지토리에서는 `wf1/wf2` 또는 `tb3_1/tb3_2` 중 하나로 통일
+| namespace / domain 충돌 | 여러 로봇이 동일 topic/frame 사용 | ROS_DOMAIN_ID 분리, namespace 적용 |
+| map 중복 발행 | WF1/WF2 map server와 Pinky map 충돌 | WF1/WF2 map server 제거, Pinky map bridge 사용 |
+| ROS2-LeRobot Python 버전 충돌 | ROS2는 Python 3.10, LeRobot은 Python 3.12 환경 사용 | 필요한 모듈 분리 및 패키지 내부 복사 |
+| 모방학습 카메라 환경 차이 | 카메라 밝기, 각도, 배경 차이 | 실제 조건에서 추가 데이터 수집 |
+| 추론 통신 지연 | 네트워크 latency | 독립망 구성, 지연 허용 범위 조정 |
+| YOLO low confidence | 조명, 시점, 데이터 부족 | 재촬영, threshold 조정, 안정 프레임 조건 적용 |
 
 ---
 
-## 9. Tech Stack
+## 15. Quick Start
 
-| Area | Stack |
-|---|---|
-| Robot Middleware | ROS 2 Jazzy |
-| Navigation | Nav2 |
-| Mapping | slam_toolbox |
-| Object Detection | YOLO |
-| Web UI | Flask / HTML / JS |
-| AI Assistant | Ollama / Gemma / RAG |
-| Robot Arm | OpenMANIPULATOR-X or custom arm control |
-| Low-level Device | STM32 |
-| Build System | colcon / ament |
-| Language | Python, C/C++ |
+> TODO: 실제 패키지명과 launch 파일 확정 후 업데이트
 
----
-
-## 10. Repository Layout
-
-```text
-ROScue/
-├── README.md
-├── docs/
-│   ├── scenario.md
-│   ├── architecture.md
-│   ├── ros_interfaces.md
-│   ├── setup.md
-│   ├── runbook.md
-│   ├── troubleshooting.md
-│   └── safety_policy.md
-├── ros2_ws/
-│   └── src/
-│       ├── roscue_bringup/
-│       ├── roscue_mission_manager/
-│       ├── roscue_interfaces/
-│       ├── roscue_navigation/
-│       ├── roscue_yolo/
-│       ├── roscue_arm_control/
-│       └── roscue_web_bridge/
-├── web/
-├── ai/
-├── stm32/
-├── maps/
-├── models/
-├── scripts/
-└── tests/
-```
-
----
-
-## 11. Quick Start
-
-> TODO: 실제 패키지명 확정 후 업데이트
-
-### 11.1 Clone
+### Clone
 
 ```bash
 git clone https://github.com/<ORG_OR_USER>/ROScue.git
 cd ROScue
 ```
 
-### 11.2 Build ROS 2 Workspace
+### Build ROS 2 Workspace
 
 ```bash
 cd ros2_ws
@@ -403,130 +477,71 @@ colcon build
 source install/setup.bash
 ```
 
-### 11.3 Start Central Server
+### Start Central Server
 
 ```bash
 ros2 launch roscue_bringup central_server.launch.py
 ```
 
-### 11.4 Start Robot
+### Start Pinky Mapping Robot
 
 ```bash
+export ROS_DOMAIN_ID=13
+ros2 launch roscue_bringup pinky_mapping.launch.py
+```
+
+### Start WF1 / WF2
+
+```bash
+export ROS_DOMAIN_ID=14
 ros2 launch roscue_bringup robot.launch.py robot_ns:=wf1
+```
+
+```bash
+export ROS_DOMAIN_ID=15
 ros2 launch roscue_bringup robot.launch.py robot_ns:=wf2
 ```
 
-### 11.5 Start Web UI
+### Start Web UI
 
 ```bash
 cd web
 python3 web_server.py
 ```
 
-Browser:
-
-```text
-http://<SERVER_IP>:8000
-```
-
 ---
 
-## 12. Demo Flow
-
-```text
-1. Web UI에서 로봇 선택
-2. SLAM 시작
-3. 지도 생성 완료
-4. 미션 시작
-5. 로봇 자율 탐색
-6. 상자 탐지
-7. 상자 접근
-8. 상자 뚜껑 개방
-9. 내부 검사
-10. 위험 객체 후보 발견
-11. 파트너 로봇 호출
-12. 두 로봇 수동 조작 모드 진입
-13. 운영자 처리 완료
-14. 탐색 재개
-```
-
----
-
-## 13. Exception Handling
-
-| Situation | Handling |
-|---|---|
-| SLAM 실패 | `PINKY → RECOVER`, 운영자 재시도 |
-| Visual servo LOST/TIMEOUT | 박스 `REVISIT` 등록 후 `EXPLORE` 복귀 |
-| 뚜껑 열기 실패 | 박스 `OPEN_FAILED`, `EXPLORE` 복귀 |
-| 뚜껑 열기 타임아웃 60s | 박스 `OPEN_FAILED`, `EXPLORE` 복귀 |
-| 파트너 120s 내 미도착 | 발견 로봇 `RECOVER` |
-| heartbeat 3s 단절 | 로봇 `LOST` 처리 |
-| 수동 조작 10분 초과 | 일시정지 및 알림 |
-| 미션 정지 명령 | 어떤 상태에서든 `IDLE` 복귀 |
-
----
-
-## 14. Current Status
-
-> TODO: 구현 상태 업데이트
-
-| Module | Status | Note |
-|---|---|---|
-| SLAM | In Progress | 지도 생성 및 저장 |
-| Nav2 Exploration | In Progress | 자율 탐색 |
-| YOLO Box Detection | In Progress | BOX model |
-| YOLO Internal Scan | In Progress | Empty / Bomb_A / Bomb_B |
-| Mission Manager | Planned | FSM 구현 필요 |
-| Web UI | In Progress | 상태 표시 및 버튼 |
-| Dual Manual Control | Planned | 리더암 2개 연동 |
-| LLM/RAG Safety Guide | Planned | 등록 문서 기반 안내 |
-| STM32 Device | In Progress | 버튼/LCD/상태 표시 |
-
----
-
-## 15. Troubleshooting
-
-자세한 내용은 [`docs/troubleshooting.md`](docs/troubleshooting.md)를 참고합니다.
-
-자주 발생하는 문제:
-
-| Problem | Cause | Solution |
-|---|---|---|
-| 로봇이 움직이지 않음 | namespace 또는 `/cmd_vel` 타입 불일치 | topic info 확인 |
-| 로봇 2대 TF 충돌 | frame id 중복 | 로봇별 frame prefix 적용 |
-| Nav2 goal 실패 | 미탐색 영역 또는 costmap 문제 | 이미 탐색된 map 좌표로 테스트 |
-| YOLO 오탐 | confidence 낮음, 조명 문제 | threshold 및 stable frame 적용 |
-| LLM 응답 지연 | 로컬 모델 성능 한계 | 비동기 처리 및 중앙 PC 실행 |
-
----
-
-## 16. Roadmap
-
-- [ ] Mission Manager FSM 구현
-- [ ] Box registry 및 중복 제거 구현
-- [ ] `/yolo/event` 표준 메시지 정의
-- [ ] `wf1/wf2` namespace 통일
-- [ ] Dual robot Nav2 goal dispatch 구현
-- [ ] Web UI에서 실시간 상태 표시
-- [ ] LLM/RAG 안전 안내 연동
-- [ ] STM32 상태 표시 장치 연동
-- [ ] Gazebo/RViz 시뮬레이션 테스트
-- [ ] 최종 데모 영상 제작
-
----
-
-## 17. Documentation
+## 16. Documentation
 
 | Document | Description |
 |---|---|
-| [`docs/scenario.md`](docs/scenario.md) | 전체 시나리오 상세 |
-| [`docs/architecture.md`](docs/architecture.md) | 시스템 아키텍처 |
-| [`docs/ros_interfaces.md`](docs/ros_interfaces.md) | ROS 2 topic/service/action 정의 |
-| [`docs/setup.md`](docs/setup.md) | 설치 방법 |
-| [`docs/runbook.md`](docs/runbook.md) | 실행 순서 |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | 문제 해결 |
-| [`docs/safety_policy.md`](docs/safety_policy.md) | 안전 제한 및 LLM/RAG 정책 |
+| [`docs/scenario.md`](docs/scenario.md) | 전체 미션 시나리오 |
+| [`docs/architecture/system_architecture.md`](docs/architecture/system_architecture.md) | 전체 시스템 아키텍처 |
+| [`docs/architecture/hardware_architecture.md`](docs/architecture/hardware_architecture.md) | 하드웨어 시스템 구성 |
+| [`docs/architecture/domain_namespace_bridge.md`](docs/architecture/domain_namespace_bridge.md) | ROS_DOMAIN_ID, namespace, domain_bridge 구조 |
+| [`docs/navigation/pinky_mapping.md`](docs/navigation/pinky_mapping.md) | Pinky SLAM 지도 생성 |
+| [`docs/navigation/coordinate_dispatch.md`](docs/navigation/coordinate_dispatch.md) | 좌표 DB 및 goal pose 발행 |
+| [`docs/perception/yolo_detection.md`](docs/perception/yolo_detection.md) | YOLO 탐지 구조 |
+| [`docs/perception/yolo_model_benchmark.md`](docs/perception/yolo_model_benchmark.md) | YOLO 모델별 성능 비교 |
+| [`docs/manipulation/box_open_imitation_learning.md`](docs/manipulation/box_open_imitation_learning.md) | 모방학습 기반 박스 개방 |
+| [`docs/llm_rag/rag_response_flow.md`](docs/llm_rag/rag_response_flow.md) | LLM/RAG 응답 구조 |
+| [`docs/embedded/stm32_object_interface.md`](docs/embedded/stm32_object_interface.md) | STM32 등록 객체 인터페이스 |
+| [`docs/troubleshooting/`](docs/troubleshooting/) | 주요 문제 해결 기록 |
+
+---
+
+## 17. Roadmap
+
+- [ ] Pinky SLAM map bridge 안정화
+- [ ] WF1/WF2 Nav2 goal dispatch 고도화
+- [ ] 좌표 DB 및 가까운 로봇 배정 로직 구현
+- [ ] YOLO26m 모델 최종 적용
+- [ ] 박스 개방 모방학습 policy 안정화
+- [ ] Leader-Follower 수동 조작 UI 연동
+- [ ] LLM/RAG 등록 객체 안내 UI 연동
+- [ ] STM32 등록 객체 인터페이스 통합
+- [ ] 전체 데모 영상 제작
+- [ ] 발표용 아키텍처 다이어그램 정리
 
 ---
 
@@ -536,20 +551,14 @@ http://<SERVER_IP>:8000
 |---|---|
 | Project Manager | TODO |
 | ROS 2 / Navigation | TODO |
-| YOLO / Vision | TODO |
-| Robot Arm / Manipulation | TODO |
-| Web UI / Server | TODO |
-| STM32 / Embedded | TODO |
+| YOLO / Perception | TODO |
+| Manipulation / Imitation Learning | TODO |
+| Web / Server | TODO |
+| Embedded / STM32 | TODO |
 | LLM / RAG | TODO |
 
 ---
 
 ## 19. License
-
-TODO
-
----
-
-## 20. Acknowledgements
 
 TODO
