@@ -5,47 +5,71 @@
 <table>
   <tr>
     <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>최준호</b><br>
-      <sub>Team Leader</sub>
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px">
     </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>공성우</b><br>
-      <sub>Manipulation / IL</sub>
-    </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>권수연</b><br>
-      <sub>TBD</sub>
-    </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>김광현</b><br>
-      <sub>TBD</sub>
+    <td align="left" width="500px">
+      <h3>최준호</h3>
+      <p><b>Role</b> : Team Leader</p>
     </td>
   </tr>
 
   <tr>
     <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>김재위</b><br>
-      <sub>TBD</sub>
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px">
     </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>양성준</b><br>
-      <sub>TBD</sub>
+    <td align="left" width="500px">
+      <h3>공성우</h3>
+      <p><b>Role</b> : TBD</p>
     </td>
+  </tr>
+
+  <tr>
     <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>임하리</b><br>
-      <sub>TBD</sub>
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px">
     </td>
+    <td align="left" width="500px">
+      <h3>권수연</h3>
+      <p><b>Role</b> : TBD</p>
+    </td>
+  </tr>
+
+  <tr>
     <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>ROScue</b><br>
-      <sub>Team Project</sub>
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px">
+    </td>
+    <td align="left" width="500px">
+      <h3>김광현</h3>
+      <p><b>Role</b> : TBD</p>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center" width="160px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px">
+    </td>
+    <td align="left" width="500px">
+      <h3>김재위</h3>
+      <p><b>Role</b> : TBD</p>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center" width="160px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px">
+    </td>
+    <td align="left" width="500px">
+      <h3>임하리</h3>
+      <p><b>Role</b> : TBD</p>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center" width="160px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px">
+    </td>
+    <td align="left" width="500px">
+      <h3>양성준</h3>
+      <p><b>Role</b> : TBD</p>
     </td>
   </tr>
 </table>
