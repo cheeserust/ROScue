@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:1a1a2e,50:16213e,100:0f3460&height=200&section=header&text=EOD-Bot&fontSize=60&fontColor=e94560&fontAlignY=35&desc=ROS2%20기반%20지능형%20협업%20폭발물%20해체%20로봇%20시스템&descSize=18&descAlignY=58&descColor=ffffff"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:1a1a2e,50:16213e,100:0f3460&height=200&section=header&text=ROScue&fontSize=60&fontColor=e94560&fontAlignY=35&desc=ROS2%20기반%20지능형%20협업%20폭발물%20해체%20로봇%20시스템&descSize=18&descAlignY=58&descColor=ffffff"/>
 
 <br>
 
