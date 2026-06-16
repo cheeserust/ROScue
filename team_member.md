@@ -4,42 +4,47 @@
 
 <table>
   <tr>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
+    <td align="center" width="170px" rowspan="2" valign="middle">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px"><br><br>
       <b>최준호</b><br>
       <sub>Team Leader</sub>
     </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
+
+    <td align="center" width="170px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px"><br><br>
       <b>공성우</b><br>
       <sub>TBD</sub>
     </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
+
+    <td align="center" width="170px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px"><br><br>
       <b>권수연</b><br>
       <sub>TBD</sub>
     </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
+
+    <td align="center" width="170px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px"><br><br>
       <b>김광현</b><br>
       <sub>TBD</sub>
     </td>
   </tr>
 
   <tr>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
+    <td align="center" width="170px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px"><br><br>
       <b>김재위</b><br>
       <sub>TBD</sub>
     </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>양성준</b><br>
+
+    <td align="center" width="170px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px"><br><br>
+      <b>임하리</b><br>
       <sub>TBD</sub>
     </td>
-    <td align="center" width="160px">
-      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px" style="border-radius: 50%;"><br>
-      <b>임하리</b><br>
+
+    <td align="center" width="170px">
+      <img src="./docs/assets/team/profile_placeholder.png" width="120px" height="120px"><br><br>
+      <b>양성준</b><br>
       <sub>TBD</sub>
     </td>
   </tr>
