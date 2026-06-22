@@ -1,0 +1,54 @@
+name: pc10_to_wf1_14_bridge
+
+from_domain: 10
+to_domain: 14
+
+topics:
+  pinky/map:
+    type: nav_msgs/msg/OccupancyGrid
+    remap: map
+    qos:
+      reliability: reliable
+      durability: transient_local
+      history: keep_last
+      depth: 1
+
+  pinky/map_metadata:
+    type: nav_msgs/msg/MapMetaData
+    remap: map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
+      history: keep_last
+      depth: 1
+
+  pinky/map_updates:
+    type: map_msgs/msg/OccupancyGridUpdate
+    remap: map_updates
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 10
+
+  # PC /wf1/goal_pose -> WF1 local /pending_goal_pose
+  # Nav2의 /goal_pose로 바로 보내지 않고 robot-domain gate가 NavigateToPose action으로 전달한다.
+  wf1/goal_pose:
+    type: geometry_msgs/msg/PoseStamped
+    remap: pending_goal_pose
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 10
+
+  # PC /wf1/cancel_navigation -> robot local /cancel_navigation
+  # stop 수신 시 현재 NavigateToPose action만 cancel하기 위한 1회성 신호.
+  wf1/cancel_navigation:
+    type: std_msgs/msg/Empty
+    remap: cancel_navigation
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 10

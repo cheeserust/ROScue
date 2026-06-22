@@ -1,0 +1,14 @@
+name: wf1_14_to_pc10_bridge
+
+from_domain: 14
+to_domain: 10
+
+topics:
+  amcl_pose:
+    type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap: wf1/amcl_pose
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 30
