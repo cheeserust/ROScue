@@ -371,18 +371,78 @@ wf1/2  → Nav2 기반 목표 좌표 자율 주행
 
 ### 🔧 다중 로봇 자율 주행 — 트러블슈팅
 
-> 개발 중 가장 많은 시간을 투자한 문제는 **3대 로봇 동시 운용 시 ROS 토픽 충돌**이었습니다.
+> 개발 중 가장 많은 시간을 투자한 문제는 **3대 로봇 동시 운용**이었습니다.
 
 <details>
-<summary><b>📋 문제 / 원인 / 해결 펼쳐보기</b></summary>
+<summary><b>📋 자세한 트러블슈팅 내용 펼쳐보기</b></summary>
 
 <br>
 
-| 문제 | 원인 | 해결 |
-|:---|:---|:---|
-| 위치 추정·경로 계획 실패 | Namespace prefix 중복 → `map→odom→base_link` TF 연결 끊김 | 로봇별 독립 `ROS_DOMAIN_ID` 부여 |
-| Nav2 `/map` 구독 실패 | wf1/wf2 자체 map server 실행 → `/map` 충돌 | Pinky 단독 SLAM, wf1/wf2 map server 제거 |
-| `/tf` 토픽 오구독 | namespace 적용 Nav2가 `/wf1/tf` 구독 시도 | 주행 서버↔로봇 bridge에서만 토픽 분리, 로봇 내부 remap 제거 |
+## 🔧 Troubleshooting: Multi-Robot ROS2 Network 구조 변경
+
+### 1. 동일한 ROS_DOMAIN_ID + Namespace 방식을 시도한 이유
+
+초기에는 Pinky, WF1, WF2, PC의 `ROS_DOMAIN_ID`를 모두 동일하게 설정하고, 각 로봇을 `namespace`로 구분하는 방식을 시도하였습니다.
+
+이 방식은 모든 로봇과 PC가 하나의 ROS2 네트워크 안에서 바로 통신할 수 있기 때문에 `/map`, `/clicked_point`, `/goal_pose`, `/amcl_pose` 등의 토픽을 별도의 브릿지 없이 공유할 수 있다는 장점이 있었습니다. 또한 RViz나 CLI에서 전체 노드와 토픽을 한 번에 확인할 수 있어 구조가 단순해 보였습니다.
+
+하지만 실제 다중 로봇 Nav2 환경에서는 단순히 namespace만 적용하는 방식으로는 안정적인 분리가 어렵다는 문제가 있었습니다.
+
+---
+
+### 2. Namespace 사용 시 가장 큰 문제
+
+가장 큰 문제는 **TF frame과 Nav2 파라미터가 namespace와 함께 일관되게 적용되지 않는 문제**였습니다.
+
+ROS2 topic은 namespace로 구분할 수 있지만, `map`, `odom`, `base_footprint`, `base_link`, `base_scan`과 같은 TF frame 이름은 메시지 내부의 frame 값으로 사용되기 때문에 namespace가 자동으로 안전하게 분리되지 않았습니다.
+
+그 결과 다음과 같은 문제가 발생하였습니다.
+
+* `map -> odom -> base_footprint -> base_link` TF 연결이 로봇별로 명확히 분리되지 않았습니다.
+* prefix가 중복 적용되거나 frame 이름이 맞지 않아 AMCL localization이 실패하였습니다.
+* Nav2 YAML 파라미터에서 `map_topic`, `odom_frame`, `base_frame` 등이 의도와 다르게 적용되었습니다.
+* `/map`을 구독해야 하는 AMCL이나 costmap이 잘못된 토픽 또는 frame을 참조하였습니다.
+
+즉, namespace는 topic 이름을 분리하는 데에는 유용했지만, 다중 로봇의 TF와 Nav2 localization 구조까지 안정적으로 분리하기에는 한계가 있었습니다.
+
+---
+
+### 3. 최종 구조: Domain ID 분리 + Domain Bridge 사용
+
+최종적으로는 각 로봇과 PC의 `ROS_DOMAIN_ID`를 분리하고, 필요한 토픽만 `domain_bridge`로 연결하는 방식으로 변경하였습니다.
+
+| Device | ROS_DOMAIN_ID |
+| ------ | ------------- |
+| PC     | 10            |
+| Pinky  | 13            |
+| WF1    | 14            |
+| WF2    | 15            |
+
+이 구조에서는 각 로봇이 독립적인 ROS2 네트워크에서 Nav2를 실행하고, PC는 필요한 데이터만 선택적으로 bridge합니다.
+
+예를 들어 Pinky가 생성한 실시간 `/map`은 PC를 거쳐 WF1, WF2로 전달하고, WF1/WF2의 `/amcl_pose`는 다시 PC로 전달합니다. 또한 PC에서 계산한 목표 좌표는 `/wf1/goal_pose`, `/wf2/goal_pose` 형태로 각 로봇에게 전달됩니다.
+
+이 방식으로 변경하면서 각 로봇의 TF, Nav2, AMCL, cmd_vel 구조가 서로 섞이지 않게 되었고, 다중 로봇 환경을 더 안정적으로 관리할 수 있었습니다.
+
+---
+
+### 4. Domain Bridge 적용 이후 주요 트러블슈팅
+
+Domain Bridge 적용 이후 가장 중요했던 문제는 **지도(`/map`) 공유와 AMCL localization 구조 충돌**이었습니다.
+
+Pinky는 SLAM을 통해 실시간 `/map`을 생성하고 있었고, WF1/WF2는 이 맵을 받아서 AMCL과 Nav2 costmap에서 사용해야 했습니다. 하지만 초기에는 WF1/WF2에서도 Nav2의 `map_server`가 함께 실행되어 Pinky의 `/map`과 로봇 내부의 `/map`이 동시에 존재하는 문제가 발생하였습니다.
+
+이로 인해 AMCL과 costmap이 어떤 `/map`을 기준으로 동작하는지 불명확해졌고, localization이 불안정해졌습니다.
+
+해결 방법은 다음과 같습니다.
+
+* WF1/WF2에서는 `map_server`를 실행하지 않도록 수정하였습니다.
+* Pinky의 SLAM `/map`만 유일한 map source로 사용하도록 하였습니다.
+* PC에서 domain bridge를 통해 Pinky의 `/map`, `/map_metadata`를 WF1/WF2 도메인으로 전달하였습니다.
+* WF1/WF2의 AMCL과 Nav2 costmap이 bridged `/map`을 구독하도록 설정하였습니다.
+* `map_topic`을 상대 경로가 아닌 절대 경로 `/map` 기준으로 정리하였습니다.
+
+결과적으로 Pinky가 생성한 실시간 맵을 WF1/WF2가 공유하고, 각 로봇은 독립적인 도메인 안에서 AMCL localization과 Nav2 주행을 수행하는 구조로 안정화할 수 있었습니다.
 
 </details>
 
