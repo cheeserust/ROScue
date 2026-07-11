@@ -1,0 +1,7 @@
+string robot_name
+string task_name
+string action          # start | stop | restart | status | pause | resume
+string box_id          # manual_done 전용
+---
+bool accepted
+string message

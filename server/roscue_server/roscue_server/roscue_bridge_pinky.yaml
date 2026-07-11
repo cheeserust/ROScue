@@ -1,0 +1,29 @@
+# roscue_bridge_pinky.yaml
+# =====================================================================
+# pinky(도메인 13, SLAM 전용) ↔ 서버(도메인 10) 사이 SLAM 신호 중계.
+# pinky 는 ROBOT_LIST 에 없고 /slam/* 만 주고받으므로 별도 파일로 둔다.
+#
+# 실행 (커스텀 타입 해석을 위해 roscue_interface 가 source 돼 있어야 함):
+#   source /opt/ros/jazzy/setup.bash && source install/setup.bash
+#   ros2 run domain_bridge domain_bridge server/roscue_bridge_pinky.yaml
+# =====================================================================
+
+name: roscue_bridge_pinky
+
+topics:
+  # ── 서버 → 로봇 ────────────────────────────────────────────────────
+  /pinky/cmd_vel:
+    type: geometry_msgs/msg/Twist
+    from_domain: 10
+    to_domain: 13
+    remap: /cmd_vel
+
+  # ── SLAM 신호 ─────────────────────────────────────────────────────
+  /slam/start:
+    type: roscue_interface/msg/SlamMsg
+    from_domain: 10
+    to_domain: 13
+  /slam/done:
+    type: roscue_interface/msg/SlamMsg
+    from_domain: 13
+    to_domain: 10

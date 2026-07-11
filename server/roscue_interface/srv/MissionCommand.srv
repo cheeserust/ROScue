@@ -1,0 +1,4 @@
+string action          # start | stop | pause | resume
+---
+bool accepted
+string message

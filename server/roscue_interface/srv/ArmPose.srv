@@ -1,0 +1,4 @@
+string pose            # HOME | CAMERA_VIEW | BOX_VIEW
+---
+bool done
+string message

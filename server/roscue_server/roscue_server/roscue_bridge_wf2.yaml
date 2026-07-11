@@ -1,0 +1,39 @@
+# roscue_bridge_wf2.yaml
+# =====================================================================
+# wf2(도메인 15) ↔ 서버(도메인 10) 사이 인터페이스 중계.
+# 구조는 roscue_bridge_wf1.yaml 과 동일, 도메인 14→15 / wf1→wf2.
+#
+# 실행 (커스텀 타입 해석을 위해 roscue_interface 가 source 돼 있어야 함):
+#   source /opt/ros/jazzy/setup.bash && source install/setup.bash
+#   ros2 run domain_bridge domain_bridge server/roscue_bridge_wf2.yaml
+# =====================================================================
+
+name: roscue_bridge_wf2
+
+topics:
+  # ── 서버 → 로봇 (접두사 제거) ────────────────────────────────────
+  /wf2/target_pose:
+    type: geometry_msgs/msg/PoseStamped
+    from_domain: 10
+    to_domain: 15
+    remap: /target_pose
+  /wf2/cmd_vel:
+    type: geometry_msgs/msg/TwistStamped   # Jazzy/TurtleBot3 기준, web/yolo 게이트웨이도 TwistStamped 로 통일
+    from_domain: 10
+    to_domain: 15
+    remap: /cmd_vel
+
+  # ── 로봇 → 서버 (접두사 추가) ────────────────────────────────────
+  # 로봇은 깨끗한 /amcl_pose 로 내보내고, 서버는 /wf2/amcl_pose 로 받는다.
+  # 서버 _amcl_pose_callback 의 pose 단일 소스 → 이게 끊기면 파트너 소환이 보류됨.
+  /amcl_pose:
+    type: geometry_msgs/msg/PoseWithCovarianceStamped
+    from_domain: 15
+    to_domain: 10
+    remap: /wf2/amcl_pose
+    qos:
+      reliability: reliable
+      durability: transient_local   # AMCL 기본값(latched) — 서버 첫 구독 시 마지막 pose 수신 보장
+
+# services: task_command / arm_pose 는 roscue_service_relay 노드가 담당
+#   ros2 run roscue_server roscue_service_relay

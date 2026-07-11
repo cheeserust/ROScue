@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROScue System Overview</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --sidebar: #edf2f8;
+      --card: #ffffff;
+      --card-soft: #f8fafc;
+      --blue: #2563eb;
+      --blue2: #5b8df7;
+      --text: #111827;
+      --muted: #64748b;
+      --line: #e5e7eb;
+      --green: #0f766e;
+      --green-bg: #e7f6f1;
+      --red: #dc2626;
+      --red-bg: #fee2e2;
+      --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+      --side-w: 220px;
+      --font: Inter, "Noto Sans KR", Arial, sans-serif;
+      --mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .app { min-height: 100vh; display: flex; }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--side-w);
+      padding: 22px 20px;
+      background: var(--sidebar);
+      border-right: 1px solid #e7edf5;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 38px; }
+    .brand-icon {
+      width: 42px; height: 42px; border-radius: 13px;
+      display: grid; place-items: center;
+      color: white; font-size: 22px; font-weight: 900;
+      background: linear-gradient(135deg, #0f5bd8, #6a93ff);
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.25);
+    }
+    .brand-title { font-size: 23px; line-height: 1; color: var(--blue); font-weight: 900; letter-spacing: -0.04em; }
+    .brand-sub { margin-top: 5px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; }
+
+    .nav-btn {
+      width: 100%;
+      height: 52px;
+      margin-bottom: 12px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 800;
+      text-align: left;
+    }
+    .nav-btn .nav-icon { width: 22px; text-align: center; font-size: 19px; }
+    .nav-btn.active {
+      color: var(--blue);
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    .main {
+      width: 100%;
+      margin-left: var(--side-w);
+      padding: 20px 26px 42px;
+    }
+    .topbar {
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 44px;
+    }
+    .search {
+      width: 280px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      border-radius: 12px;
+      background: #eef3f8;
+      color: #7c8aa0;
+      font-size: 14px;
+    }
+    .top-actions { display: flex; align-items: center; gap: 22px; color: #64748b; font-size: 19px; }
+    .avatar {
+      width: 39px; height: 39px; border-radius: 12px;
+      display: grid; place-items: center; background: #111827; color: white;
+    }
+
+    .page { display: none; max-width: 1280px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    h1 { margin: 0; font-size: 38px; line-height: 1.05; font-weight: 900; letter-spacing: -0.055em; }
+    .lead { margin: 8px 0 0; color: #52525b; font-size: 16px; }
+    .head-buttons { display: flex; gap: 12px; align-items: center; }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin-bottom: 28px; }
+    .kpi {
+      height: 164px;
+      overflow: hidden;
+      padding: 24px 20px;
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .kpi-icon {
+      width: 42px; height: 42px; border-radius: 8px;
+      display: grid; place-items: center;
+      color: var(--blue); background: #eaf1ff; font-size: 22px;
+    }
+    .pill {
+      padding: 5px 9px; border-radius: 999px;
+      font-size: 12px; font-weight: 900;
+      color: var(--green); background: var(--green-bg);
+    }
+    .pill.red { color: var(--red); background: var(--red-bg); }
+    .kpi-label { color: #444b58; font-size: 15px; margin-bottom: 8px; }
+    .kpi-value { font-family: var(--mono); font-weight: 900; font-size: 30px; letter-spacing: -0.04em; white-space: nowrap; }
+    .kpi-value small { font-family: var(--font); font-size: 13px; color: #616b7c; font-weight: 700; margin-left: 3px; }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+    .detection-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+
+    .card {
+      min-width: 0;
+      margin-bottom: 24px;
+      padding: 24px;
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(226, 232, 240, 0.72);
+    }
+    .card-title { margin: 0 0 18px; font-size: 22px; font-weight: 900; letter-spacing: -0.035em; }
+    .sub { margin: -8px 0 16px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .control-row, .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+    label { color: #374151; font-size: 13px; font-weight: 800; }
+    input, select {
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8fafc;
+      color: var(--text);
+      outline: none;
+      font: inherit;
+    }
+    input:focus, select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+    input { width: 220px; }
+
+    button {
+      min-height: 38px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0b5cd7, #5d8df7);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+    }
+    button:hover { filter: brightness(0.96); }
+    button:disabled { background: #d1d5db; color: #6b7280; cursor: not-allowed; box-shadow: none; }
+    .ghost { background: #eef2f7; color: #1d4ed8; box-shadow: none; }
+    .danger { background: #ef4444; color: white; box-shadow: 0 12px 24px rgba(239, 68, 68, 0.16); }
+    .success { background: #16a34a; color: white; box-shadow: 0 12px 24px rgba(22, 163, 74, 0.16); }
+
+    pre, .message {
+      max-width: 100%;
+      margin: 12px 0 0;
+      padding: 12px 14px;
+      min-height: 40px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      color: #334155;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.55;
+      font-size: 13px;
+      overflow-x: hidden;
+    }
+    .message.warning { background: #fff1f2; color: var(--red); border-left: 4px solid var(--red); }
+    .message.caution { background: #eef6ff; color: var(--blue); border-left: 4px solid var(--blue); }
+    .message.empty { color: var(--muted); }
+
+    .info-row { min-width: 0; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; margin: 8px 0; color: var(--muted); font-size: 14px; }
+    .info-row strong { min-width: 0; color: #111827; font-family: var(--mono); overflow-wrap: anywhere; word-break: break-word; }
+    .method-card { position: sticky; top: 20px; }
+    .method-divider { height: 1px; background: var(--line); margin: 18px 0; }
+    .method-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .method-title-row h3 { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: -0.03em; }
+    .confirm-status { min-height: 18px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .method-meta { display: grid; grid-template-columns: 1fr; gap: 2px; margin-bottom: 10px; }
+
+    .badge { display: inline-flex; padding: 4px 9px; border-radius: 999px; color: #64748b; background: #eef2f7; font-size: 12px; font-weight: 900; }
+    .badge.on { color: var(--green); background: var(--green-bg); }
+    .small { color: var(--muted); font-size: 12px; }
+
+    .teleop-panel { padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #f8fafc; }
+    .teleop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+
+    .camera-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .camera-card { padding: 12px; border-radius: 14px; background: #f8fafc; border: 1px solid var(--line); color: #475569; font-weight: 900; }
+    .camera-card img, .yolo-image { display: block; width: 100%; margin-top: 10px; border-radius: 12px; background: #e5e7eb; border: 1px solid var(--line); object-fit: contain; }
+    .camera-card img { aspect-ratio: 4 / 3; height: auto; }
+    .yolo-image { height: 240px; object-fit: contain; }
+    .dual-yolo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .stream-card { padding: 16px; }
+    .stream-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .stream-top .card-title { margin: 0; font-size: 20px; }
+    .stream-url { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stream-actions { margin-top: 10px; }
+
+    .table-card { padding: 0; overflow: hidden; }
+    .table-head { padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { color: #475569; background: #f8fafc; font-weight: 900; letter-spacing: 0.08em; font-size: 11px; text-transform: uppercase; }
+    tbody tr:hover { background: #f8fafc; }
+
+    .progress-wrap { height: 14px; overflow: hidden; border-radius: 999px; background: #e5e7eb; margin-top: 10px; }
+    .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #0b5cd7, #76a2ff); transition: width 0.15s linear; }
+    .progress-text { color: var(--blue); font-weight: 900; font-family: var(--mono); }
+
+    .asset-row { margin: 18px 0; }
+    .asset-line { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+    .bar { height: 12px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
+    .bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #0b5cd7, #76a2ff); }
+
+    .chart-card { min-height: 360px; }
+    .fake-chart { height: 260px; margin-top: 12px; border-bottom: 1px solid #dfe5ec; background: linear-gradient(#eef2f7 1px, transparent 1px) 0 0/100% 66px; position: relative; overflow: hidden; }
+    .fake-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    @media (max-width: 1200px) {
+      .detection-grid { grid-template-columns: 1fr; }
+      .method-card { position: static; }
+    }
+    @media (max-width: 1000px) {
+      .kpis, .grid, .grid-2, .grid-3, .camera-grid { grid-template-columns: 1fr; }
+      .page-head { align-items: flex-start; flex-direction: column; }
+      .head-buttons { width: 100%; flex-wrap: wrap; }
+    }
+    @media (max-width: 900px) {
+      .dual-yolo-grid { grid-template-columns: 1fr; }
+      .yolo-image { height: auto; max-height: 320px; }
+    }
+    @media (max-width: 760px) {
+      .sidebar { position: static; width: 100%; }
+      .app { display: block; }
+      .main { margin-left: 0; padding: 16px; }
+      .topbar { margin-bottom: 24px; }
+      .search { width: 100%; }
+      h1 { font-size: 30px; }
+      input { width: 100%; }
+    }
+    /* ---- Live Map page ---- */
+    .status-badge { padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 800; }
+    .status-badge.connected { color: var(--green); background: var(--green-bg); }
+    .status-badge.disconnected { color: var(--red); background: var(--red-bg); }
+
+    #page-map .map-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+    #page-map .map-toolbar label { display: flex; align-items: center; gap: 6px; }
+    #page-map .map-toolbar .hint { color: var(--muted); font-size: 12px; font-weight: 700; }
+
+    #page-map #map-wrapper {
+      position: relative; width: 100%; height: 560px;
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #d1d5db;
+    }
+    #page-map #map-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+    #page-map #map-empty {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      color: #4b5563; font-weight: 800; pointer-events: none;
+    }
+
+    #page-map .map-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; color: #374151; font-size: 13px; font-weight: 700; }
+    #page-map .map-legend span { display: flex; align-items: center; gap: 7px; }
+    #page-map .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #111827; display: inline-block; }
+    #page-map .dot.clicked { background: #f59e0b; }
+    #page-map .dot.random { background: #2563eb; }
+    #page-map .dot.navigating { background: #ef4444; }
+    #page-map .dot.completed { background: #9ca3af; }
+    #page-map .tri { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 13px solid #16a34a; display: inline-block; }
+    #page-map .tri.wf2 { border-bottom-color: #9333ea; }
+
+    #page-map .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+    #page-map .info-grid dt { color: var(--muted); font-size: 12px; font-weight: 800; }
+    #page-map .info-grid dd { margin: 0; font-family: var(--mono); font-size: 13px; word-break: break-all; }
+    #page-map .map-coords { display: flex; gap: 18px; margin-top: 12px; font-size: 13px; }
+    #page-map .map-coords strong { font-family: var(--mono); }
+    #page-map .robot-card { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; font-size: 13px; }
+    #page-map .robot-card span { font-family: var(--mono); color: #374151; }
+    #page-map #log-box { margin: 0; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">ROScue</div>
+          <div class="brand-sub">MINESWEEPER</div>
+        </div>
+      </div>
+      <button id="btn-main1" class="nav-btn active" onclick="showPage('main1')"><span class="nav-icon">▦</span>Dashboard</button>
+      <button id="btn-main2" class="nav-btn" onclick="showPage('main2')"><span class="nav-icon">⚡</span>Detection</button>
+      <button id="btn-map" class="nav-btn" onclick="showPage('map')"><span class="nav-icon">🗺️</span>Map</button>
+      <button id="btn-debug" class="nav-btn" onclick="showPage('debug')"><span class="nav-icon">🧪</span>Debug</button>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+      </div>
+
+      <section id="page-main1" class="page active">
+        <div class="page-head">
+          <div>
+            <h1>System Overview</h1>
+            <p class="lead">Real-time control panel for the ROScue mission system.</p>
+          </div>
+          <div class="head-buttons">
+            <button class="ghost" onclick="fetchBoxes()">📅 Refresh Boxes</button>
+            <button onclick="sendMission('start')">⇩ Mission Start</button>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">🗺️</div><span id="slam-status-pill" class="pill">Ready</span></div><div class="kpi-label">Mapping Status</div><div id="slam-status-kpi" class="kpi-value">대기<small>phase</small></div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">🤖</div><span id="robot-count-pill" class="pill">- Units</span></div><div class="kpi-label">Robots</div><div id="robot-count-kpi" class="kpi-value">-<small>active</small></div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">📦</div><span id="box-count-pill" class="pill">0 Boxes</span></div><div class="kpi-label">Detected Boxes</div><div id="box-count-kpi" class="kpi-value">0<small>box</small></div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">🛡️</div><span id="op-mode-pill" class="pill">Idle</span></div><div class="kpi-label">Operation Mode</div><div id="op-mode-kpi" class="kpi-value">IDLE<small>state</small></div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2 class="card-title">지도 생성</h2>
+            <div class="control-row">
+              <label>로봇
+                <select id="slam-robot">
+                  <option value="pinky">pinky</option>
+                  <option value="waffle1">waffle1</option>
+                  <option value="waffle2">waffle2</option>
+                </select>
+              </label>
+              <button onclick="sendSlam('start')">SLAM 시작</button>
+              <button class="danger" onclick="sendSlam('stop')">종료</button>
+            </div>
+            <pre id="slam-result"></pre>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">미션 제어</h2>
+            <div class="control-row">
+              <button class="success" onclick="sendMission('start')">시작</button>
+              <button class="danger" onclick="sendMission('stop')">정지</button>
+              <button onclick="sendMission('pause')">일시정지</button>
+              <button onclick="sendMission('resume')">재개</button>
+            </div>
+            <pre id="mission-result"></pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">수동 조종</h2>
+          <div class="grid-3">
+            <div id="panel-0" class="teleop-panel"><div class="teleop-head"><strong>pinky</strong><span id="status-0" class="badge">비활성</span></div><button onclick="activatePanel(0)">활성화</button><pre id="display-0">W=전진 S=후진 A=좌 D=우
+Q=속도↑  Z=속도↓</pre></div>
+            <div id="panel-1" class="teleop-panel"><div class="teleop-head"><strong>waffle1</strong><span id="status-1" class="badge">비활성</span></div><button onclick="activatePanel(1)">활성화</button><pre id="display-1">W=전진 S=후진 A=좌 D=우
+Q=속도↑  Z=속도↓</pre></div>
+            <div id="panel-2" class="teleop-panel"><div class="teleop-head"><strong>waffle2</strong><span id="status-2" class="badge">비활성</span></div><button onclick="activatePanel(2)">활성화</button><pre id="display-2">W=전진 S=후진 A=좌 D=우
+Q=속도↑  Z=속도↓</pre></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">카메라</h2>
+          <div class="camera-grid">
+            <div class="camera-card">pinky (13)<img src="http://192.168.0.13:5002/camera" alt="pinky camera"></div>
+            <div class="camera-card">waffle1 (14)<img src="http://192.168.0.14:5000/camera" alt="waffle1 camera"></div>
+            <div class="camera-card">waffle2 (15)<img src="http://192.168.0.15:5001/camera" alt="waffle2 camera"></div>
+          </div>
+        </div>
+
+        <div class="card table-card">
+          <div class="table-head">
+            <div>
+              <h2 class="card-title" style="margin:0">Box 관리</h2>
+              <div class="small">자동 갱신: 2초 · 마지막 갱신: <strong id="box-last-updated">-</strong></div>
+            </div>
+            <div class="control-row">
+              <label>Box ID <input id="box_id" list="box-id-list" placeholder="Box 목록에서 선택"></label>
+              <datalist id="box-id-list"></datalist>
+              <button class="success" onclick="sendManualDone()">처리 완료</button>
+            </div>
+          </div>
+          <pre id="manual-result" style="margin:0 24px 16px"></pre>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>선택</th><th>box_id</th><th>x</th><th>y</th><th>status</th><th>robot</th></tr></thead>
+              <tbody id="box-tbody"><tr><td colspan="6">Box 목록을 불러오는 중입니다.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-main2" class="page">
+        <div class="page-head">
+          <div>
+            <h1>Detection Overview</h1>
+            <p class="lead">YOLO stream, confirmation gauge, and defusal guide.</p>
+          </div>
+          <div class="head-buttons">
+            <button onclick="setYoloMode('EXPLOSIVE_DETECTION_MODEL')">두 화면 폭발물 탐지</button>
+            <button class="ghost" onclick="setYoloMode('BOX_DETECTION_MODEL')">두 화면 박스 탐지</button>
+            <button class="ghost" onclick="refreshYoloImages()">화면 새로고침</button>
+            <button class="danger" onclick="setYoloMode('OFF')">YOLO OFF</button>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">🎯</div><span class="pill">Live</span></div><div class="kpi-label">Detected Label</div><div id="detect-label-kpi" class="kpi-value">-<small>label</small></div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">📈</div><span class="pill">Gauge</span></div><div class="kpi-label">Confirmation</div><div id="detect-progress-kpi" class="kpi-value">0<small>%</small></div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">🤖</div><span class="pill">Robot</span></div><div class="kpi-label">Source Robot</div><div id="detect-robot-kpi" class="kpi-value">-<small>unit</small></div></div>
+          <div class="kpi"><div class="kpi-top"><div class="kpi-icon">🧠</div><span class="pill">Guide</span></div><div class="kpi-label">Method Status</div><div id="notice-kpi" class="kpi-value">WAIT<small>state</small></div></div>
+        </div>
+
+        <div class="detection-grid">
+          <div>
+            <div class="dual-yolo-grid">
+              <div class="card stream-card">
+                <div class="stream-top">
+                  <h2 class="card-title">YOLO 화면 · wf1</h2>
+                  <span class="badge on">port 5055</span>
+                </div>
+                <div class="sub">주소: <span id="yoloUrlText-wf1" class="stream-url">-</span></div>
+                <img id="yoloImage-wf1" class="yolo-image" src="" alt="wf1 YOLO stream">
+                <iframe id="yoloHiddenFrame-wf1" style="display:none;"></iframe>
+                <div class="control-row stream-actions">
+                  <button class="ghost" onclick="refreshYoloImage('wf1')">wf1 새로고침</button>
+                </div>
+              </div>
+
+              <div class="card stream-card">
+                <div class="stream-top">
+                  <h2 class="card-title">YOLO 화면 · wf2</h2>
+                  <span class="badge on">port 5056</span>
+                </div>
+                <div class="sub">주소: <span id="yoloUrlText-wf2" class="stream-url">-</span></div>
+                <img id="yoloImage-wf2" class="yolo-image" src="" alt="wf2 YOLO stream">
+                <iframe id="yoloHiddenFrame-wf2" style="display:none;"></iframe>
+                <div class="control-row stream-actions">
+                  <button class="ghost" onclick="refreshYoloImage('wf2')">wf2 새로고침</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">수동 보고</h2>
+              <div class="control-row">
+                <input id="user-report-text" placeholder="예: Bomb_C를 발견했다">
+                <button onclick="sendUserReport()">보고 전송</button>
+                <button class="ghost" onclick="fetchLatestNotice()">안내문 갱신</button>
+              </div>
+              <pre id="report-result"></pre>
+            </div>
+          </div>
+
+          <div>
+            <div class="card method-card" id="method-card">
+              <h2 class="card-title">탐지 확정 및 해체 방법</h2>
+              <div class="info-row"><span>상태</span><strong id="detectStatus">대기 중</strong></div>
+              <div class="info-row"><span>robot</span><strong id="detectRobot">-</strong></div>
+              <div class="info-row"><span>label</span><strong id="detectLabel">-</strong></div>
+              <div class="info-row"><span>confidence</span><strong id="detectConfidence">-</strong></div>
+              <div class="info-row"><span>progress</span><strong id="detectProgressText" class="progress-text">0%</strong></div>
+              <div class="progress-wrap"><div id="detectProgressBar" class="progress-bar"></div></div>
+              <div class="control-row">
+                <button id="confirmDetectionBtn" class="success" onclick="confirmDetection()" disabled>확인 후 해체 방법 보기</button>
+              </div>
+              <div id="confirm-result" class="confirm-status"></div>
+
+              <div class="method-divider"></div>
+              <div class="method-title-row">
+                <h3>해체 방법 안내</h3>
+                <span id="noticeStatus" class="badge">대기 중</span>
+              </div>
+              <div class="method-meta">
+                <div class="info-row"><span>source</span><strong id="source">-</strong></div>
+                <div class="info-row"><span>robot</span><strong id="robot">-</strong></div>
+                <div class="info-row"><span>event</span><strong id="event">-</strong></div>
+                <div class="info-row"><span>label</span><strong id="label">-</strong></div>
+                <div class="info-row"><span>confidence</span><strong id="confidence">-</strong></div>
+              </div>
+              <div id="message" class="message empty">아직 표시할 해체 방법이 없습니다.</div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <section id="page-debug" class="page">
+        <div class="page-head">
+          <div>
+            <h1>Debug Console</h1>
+            <p class="lead">Manual task commands and FSM transition tests for development.</p>
+          </div>
+          <div class="head-buttons">
+            <button class="ghost" onclick="fetchBoxes()">📦 Refresh Boxes</button>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <h2 class="card-title">개별 태스크 명령</h2>
+            <p class="sub">원래 Debug에 있던 로봇별 task/action 테스트입니다.</p>
+            <div class="control-row">
+              <label>로봇
+                <select id="robot_name">
+                  <option>waffle1</option>
+                  <option>waffle2</option>
+                  <option>pinky</option>
+                </select>
+              </label>
+              <label>Task
+                <select id="task_name" onchange="updateActions()">
+                  <option value="navigation">navigation</option>
+                  <option value="robot_omx_manual_control">robot_omx_manual_control</option>
+                  <option value="robot_arm_pose_server">robot_arm_pose_server</option>
+                  <option value="arm_pose">arm_pose</option>
+                  <option value="yolo_mode">yolo_mode</option>
+                </select>
+              </label>
+              <label>Action
+                <select id="action"></select>
+              </label>
+              <button onclick="sendCommand()">전송</button>
+            </div>
+            <pre id="command-result"></pre>
+          </div>
+
+          <div class="card">
+            <h2 class="card-title">FSM 강제 전이</h2>
+            <p class="sub">box_id, 좌표, partner robot이 필요한 전이는 선택 입력창만 표시합니다.</p>
+            <div class="control-row">
+              <label>로봇
+                <select id="fsm_robot">
+                  <option>waffle1</option>
+                  <option>waffle2</option>
+                  <option>pinky</option>
+                </select>
+              </label>
+              <label>전이
+                <select id="fsm_action" onchange="updateFsmInputs()">
+                  <option value="debug_idle">IDLE</option>
+                  <option value="debug_explore">EXPLORE</option>
+                  <option value="debug_yolo">YOLO_DEBUG</option>
+                  <option value="debug_recover">RECOVER</option>
+                  <option value="debug_pinky_task">PINKY_TASK / SLAM</option>
+                  <option value="debug_approach">APPROACH - box_id</option>
+                  <option value="debug_open_box_cover">OPEN_BOX_COVER - box_id</option>
+                  <option value="debug_box_scan">BOX_SCAN - box_id</option>
+                  <option value="debug_wait_partner">WAIT_PARTNER - box_id</option>
+                  <option value="debug_summon">SUMMON - 좌표</option>
+                  <option value="debug_dual_manual">DUAL_MANUAL - robot2</option>
+                  <option value="debug_arrived">robot_reached / arrived</option>
+                  <option value="debug_explosive_found">EXPLOSIVE_FOUND</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="control-row" id="fsm-boxid-group">
+              <label>Box ID
+                <input id="fsm_box_id" list="box-id-list" placeholder="Box 목록에서 선택">
+              </label>
+            </div>
+            <div class="control-row" id="fsm-coord-group" style="display:none">
+              <label>x <input id="fsm_target_x" type="number" step="0.1" value="0.0" style="width:110px"></label>
+              <label>y <input id="fsm_target_y" type="number" step="0.1" value="0.0" style="width:110px"></label>
+            </div>
+            <div class="control-row" id="fsm-robot2-group" style="display:none">
+              <label>Robot2
+                <select id="fsm_robot2">
+                  <option>waffle1</option>
+                  <option>waffle2</option>
+                </select>
+              </label>
+            </div>
+            <div class="control-row"><button onclick="sendDebugFsm()">강제 전이</button></div>
+            <pre id="fsm-result"></pre>
+          </div>
+        </div>
+      </section>
+      <section id="page-map" class="page">
+        <div class="page-head">
+          <div>
+            <h1>Live Map</h1>
+            <p class="lead">/pinky/map 실시간 지도 · 클릭 시 clicked_point 발행 · WF 위치 / 좌표 표시</p>
+          </div>
+          <div class="head-buttons">
+            <div id="connection-status" class="status-badge disconnected">연결 대기</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div class="map-toolbar">
+              <button id="view-reset" class="ghost">화면 맞춤</button>
+              <label><input type="checkbox" id="show-clicked" checked> publish</label>
+              <label><input type="checkbox" id="show-random" checked> random</label>
+              <label><input type="checkbox" id="show-completed" checked> completed</label>
+              <label><input type="checkbox" id="show-robots" checked> WF 위치</label>
+              <span class="hint">지도 클릭 → /pinky/clicked_point 발행 · Shift+드래그 이동 · 휠 확대/축소</span>
+            </div>
+
+            <div id="map-wrapper">
+              <canvas id="map-canvas"></canvas>
+              <div id="map-empty">/pinky/map 수신 대기 중</div>
+            </div>
+
+            <div class="map-legend">
+              <span><i class="dot clicked"></i>Publish</span>
+              <span><i class="dot random"></i>Random</span>
+              <span><i class="dot navigating"></i>Navigating</span>
+              <span><i class="dot completed"></i>Completed</span>
+              <span><i class="tri wf1"></i>WF1</span>
+              <span><i class="tri wf2"></i>WF2</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <h2 class="card-title">실행 정보</h2>
+              <dl class="info-grid">
+                <dt>ROS_DOMAIN_ID</dt><dd id="ros-domain">-</dd>
+                <dt>Map Topic</dt><dd id="map-topic">-</dd>
+                <dt>Clicked Topic</dt><dd id="clicked-topic">-</dd>
+                <dt>DB</dt><dd id="db-status">-</dd>
+              </dl>
+              <div class="map-coords">
+                <span>map x <strong id="mouse-x">-</strong></span>
+                <span>map y <strong id="mouse-y">-</strong></span>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">지도 상태</h2>
+              <dl class="info-grid">
+                <dt>크기</dt><dd id="map-size">-</dd>
+                <dt>해상도</dt><dd id="map-resolution">-</dd>
+                <dt>origin</dt><dd id="map-origin">-</dd>
+                <dt>Publish</dt><dd id="clicked-count">0</dd>
+                <dt>Random</dt><dd id="random-count">0</dd>
+                <dt>Completed</dt><dd id="completed-count">0</dd>
+              </dl>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">로봇 현재 위치</h2>
+              <div class="robot-card"><strong>WF1</strong><span id="wf1-pose">pose 대기</span></div>
+              <div class="robot-card"><strong>WF2</strong><span id="wf2-pose">pose 대기</span></div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title">최근 동작</h2>
+              <pre id="log-box"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    function showPage(name) {
+      document.getElementById('page-main1').classList.toggle('active', name === 'main1');
+      document.getElementById('page-main2').classList.toggle('active', name === 'main2');
+      document.getElementById('page-debug').classList.toggle('active', name === 'debug');
+      document.getElementById('page-map').classList.toggle('active', name === 'map');
+      document.getElementById('btn-main1').classList.toggle('active', name === 'main1');
+      document.getElementById('btn-main2').classList.toggle('active', name === 'main2');
+      document.getElementById('btn-debug').classList.toggle('active', name === 'debug');
+      document.getElementById('btn-map').classList.toggle('active', name === 'map');
+      // 지도 탭이 보일 때 캔버스 크기 재계산 (map_gui.js가 resize 이벤트에 반응)
+      if (name === 'map') window.dispatchEvent(new Event('resize'));
+    }
+
+    async function callApi(url, body, resultId) {
+      const el = document.getElementById(resultId);
+      try {
+        const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        el.textContent = (res.ok ? '[OK] ' : '[FAIL] ') + (data.message || JSON.stringify(data));
+      } catch (err) { el.textContent = '[ERROR] ' + err.message; }
+    }
+
+    function setSlamKpi(phase) {
+      const kpi = document.getElementById('slam-status-kpi');
+      const pill = document.getElementById('slam-status-pill');
+      if (phase === 'mapping') {
+        kpi.innerHTML = 'Mapping<small>phase</small>';
+        pill.textContent = 'SLAM 중';
+        pill.className = 'pill red';
+      } else {
+        kpi.innerHTML = '완료<small>phase</small>';
+        pill.textContent = 'Done';
+        pill.className = 'pill';
+      }
+    }
+
+    function sendSlam(action) {
+      const robot = document.getElementById('slam-robot').value;
+      const resultEl = document.getElementById('slam-result');
+
+      if (action === 'start') {
+        if (robot === 'pinky') {
+          if (activeIdx !== 0) {
+            activatePanel(0);
+          }
+          resultEl.textContent = ' Pinky  조종 모드';
+          setSlamKpi('mapping');
+        }
+      } else if (action === 'stop') {
+        stopTeleop();
+        resultEl.textContent = '조종 모드 종료';
+        setSlamKpi('done');
+      }
+    }
+    function setOpModeKpi(mode) {
+      const kpi = document.getElementById('op-mode-kpi');
+      const pill = document.getElementById('op-mode-pill');
+      if (mode === 'fsm') {
+        kpi.innerHTML = 'FSM<small>auto</small>';
+        pill.textContent = 'Running';
+        pill.className = 'pill red';
+      } else {
+        kpi.innerHTML = 'IDLE<small>state</small>';
+        pill.textContent = 'Idle';
+        pill.className = 'pill';
+      }
+    }
+
+    function sendMission(action) {
+      callApi('/api/command', {task_name: 'mission', action}, 'mission-result');
+      if (action === 'start') setOpModeKpi('fsm');
+      else if (action === 'stop' || action === 'pause') setOpModeKpi('idle');
+    }
+    function sendManualDone() {
+      const box_id = document.getElementById('box_id').value.trim();
+      if (!box_id) { alert('Box ID를 입력하세요.'); return; }
+      callApi('/api/command', {task_name: 'manual_done', box_id}, 'manual-result');
+    }
+
+
+    const ACTION_MAP = {
+      navigation: ['start', 'stop', 'restart'],
+      robot_omx_manual_control: ['start', 'stop'],
+      robot_arm_pose_server: ['start', 'stop'],
+      arm_pose: ['HOME', 'CAMERA_VIEW', 'BOX_VIEW'],
+      yolo_mode: ['BOX_DETECTION_MODEL', 'EXPLOSIVE_DETECTION_MODEL', 'OFF'],
+    };
+
+    function updateActions() {
+      const taskEl = document.getElementById('task_name');
+      const actionEl = document.getElementById('action');
+      if (!taskEl || !actionEl) return;
+      actionEl.innerHTML = (ACTION_MAP[taskEl.value] || [])
+        .map(action => `<option>${action}</option>`)
+        .join('');
+    }
+
+    function sendCommand() {
+      callApi('/api/command', {
+        robot_name: document.getElementById('robot_name').value,
+        task_name: document.getElementById('task_name').value,
+        action: document.getElementById('action').value,
+      }, 'command-result');
+    }
+
+    const FSM_NEEDS_BOX = new Set(['debug_approach', 'debug_open_box_cover', 'debug_box_scan', 'debug_wait_partner']);
+    const FSM_NEEDS_COORD = new Set(['debug_summon']);
+    const FSM_NEEDS_ROBOT2 = new Set(['debug_dual_manual']);
+
+    function updateFsmInputs() {
+      const actionEl = document.getElementById('fsm_action');
+      if (!actionEl) return;
+      const action = actionEl.value;
+      document.getElementById('fsm-boxid-group').style.display = FSM_NEEDS_BOX.has(action) ? 'flex' : 'none';
+      document.getElementById('fsm-coord-group').style.display = FSM_NEEDS_COORD.has(action) ? 'flex' : 'none';
+      document.getElementById('fsm-robot2-group').style.display = FSM_NEEDS_ROBOT2.has(action) ? 'flex' : 'none';
+    }
+
+    function sendDebugFsm() {
+      const robot = document.getElementById('fsm_robot').value;
+      const action = document.getElementById('fsm_action').value;
+      const body = {robot_name: robot, task_name: action, action, box_id: ''};
+
+      if (FSM_NEEDS_BOX.has(action)) {
+        body.box_id = document.getElementById('fsm_box_id').value.trim();
+        if (!body.box_id) { alert('Box ID를 입력하세요.'); return; }
+      } else if (FSM_NEEDS_COORD.has(action)) {
+        const x = parseFloat(document.getElementById('fsm_target_x').value || '0');
+        const y = parseFloat(document.getElementById('fsm_target_y').value || '0');
+        body.box_id = `${x},${y}`;
+      } else if (FSM_NEEDS_ROBOT2.has(action)) {
+        body.box_id = document.getElementById('fsm_robot2').value;
+      }
+
+      callApi('/api/command', body, 'fsm-result');
+    }
+
+    const ROBOTS = ['pinky', 'waffle1', 'waffle2'];
+    let activeIdx = -1, keys = new Set(), timer = null, linear = 0.2, angular = 1.0;
+    function activatePanel(idx) {
+      if (activeIdx === idx) { stopTeleop(); return; }
+      if (activeIdx !== -1) sendZero(ROBOTS[activeIdx]);
+      activeIdx = idx; keys.clear(); linear = 0.2; angular = 1.0; updateTeleopUi();
+      if (!timer) timer = setInterval(teleopTick, 50);
+    }
+    function stopTeleop() {
+      if (activeIdx !== -1) sendZero(ROBOTS[activeIdx]);
+      activeIdx = -1; keys.clear(); clearInterval(timer); timer = null; updateTeleopUi();
+    }
+    function teleopTick() {
+      if (activeIdx === -1) return;
+      let x = 0, z = 0;
+      if (keys.has('w')) x += 1; if (keys.has('s')) x -= 1; if (keys.has('a')) z += 1; if (keys.has('d')) z -= 1;
+      if (x < 0) z = -z;
+      const robot = ROBOTS[activeIdx];
+      fetch('/api/teleop', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({robot_name: robot, linear_x: x * linear, angular_z: z * angular}) });
+      document.getElementById(`display-${activeIdx}`).textContent = `held: ${[...keys].join('').toUpperCase() || '-'}\nlinear.x=${(x * linear).toFixed(2)}\nangular.z=${(z * angular).toFixed(2)}`;
+    }
+    function sendZero(robot) {
+      fetch('/api/teleop', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({robot_name: robot, linear_x: 0, angular_z: 0}) });
+    }
+    function updateTeleopUi() {
+      ROBOTS.forEach((_, i) => {
+        const s = document.getElementById(`status-${i}`), active = i === activeIdx;
+        s.textContent = active ? '활성' : '비활성'; s.className = active ? 'badge on' : 'badge';
+        if (!active) document.getElementById(`display-${i}`).textContent = 'W=전진 S=후진 A=좌 D=우\nQ=속도↑  Z=속도↓';
+      });
+    }
+    document.addEventListener('keydown', (e) => {
+      if (activeIdx === -1) return;
+      const k = e.key.toLowerCase();
+      if ('wasd'.includes(k)) { e.preventDefault(); keys.add(k); }
+      if (k === 'q') { linear *= 1.1; angular *= 1.1; }
+      if (k === 'z') { linear /= 1.1; angular /= 1.1; }
+    });
+    document.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+
+    async function fetchBoxes() {
+      const tbody = document.getElementById('box-tbody');
+      try {
+        const res = await fetch('/api/boxes');
+        const data = await res.json();
+        const boxes = data.boxes || [];
+        document.getElementById('box-last-updated').textContent = new Date().toLocaleTimeString();
+        document.getElementById('box-id-list').innerHTML = boxes.map(b => `<option value="${b.box_id}"></option>`).join('');
+        document.getElementById('box-count-kpi').innerHTML = `${boxes.length}<small>box</small>`;
+        document.getElementById('box-count-pill').textContent = `${boxes.length} Boxes`;
+        if (!boxes.length) { tbody.innerHTML = '<tr><td colspan="6">등록된 Box가 없습니다.</td></tr>'; return; }
+        tbody.innerHTML = boxes.map(b => {
+          const x = b.pose && Number.isFinite(Number(b.pose.x)) ? Number(b.pose.x).toFixed(2) : '-';
+          const y = b.pose && Number.isFinite(Number(b.pose.y)) ? Number(b.pose.y).toFixed(2) : '-';
+          return `<tr><td><button class="ghost" onclick="selectBox('${b.box_id}')">선택</button></td><td>${b.box_id}</td><td>${x}</td><td>${y}</td><td>${b.status || '-'}</td><td>${b.discovered_by || '-'}</td></tr>`;
+        }).join('');
+      } catch (err) { tbody.innerHTML = `<tr><td colspan="6">Box 목록 갱신 실패: ${err.message}</td></tr>`; }
+    }
+    function selectBox(id) {
+      document.getElementById('box_id').value = id;
+      const fsmBox = document.getElementById('fsm_box_id');
+      if (fsmBox) fsmBox.value = id;
+    }
+
+    const YOLO_STREAMS = {
+      wf1: { port: 5055, label: 'wf1' },
+      wf2: { port: 5056, label: 'wf2' },
+    };
+
+    function getYoloBaseUrl(robotKey) {
+      const host = window.location.hostname || '127.0.0.1';
+      const stream = YOLO_STREAMS[robotKey];
+      return `http://${host}:${stream.port}`;
+    }
+
+    function refreshYoloImage(robotKey) {
+      const url = `${getYoloBaseUrl(robotKey)}/dashboard/debug`;
+      document.getElementById(`yoloUrlText-${robotKey}`).textContent = url;
+      document.getElementById(`yoloImage-${robotKey}`).src = url;
+    }
+
+    function refreshYoloImages() {
+      Object.keys(YOLO_STREAMS).forEach(refreshYoloImage);
+    }
+
+    function setYoloMode(mode, robotKey = null) {
+      const keys = robotKey ? [robotKey] : Object.keys(YOLO_STREAMS);
+      keys.forEach((key) => {
+        document.getElementById(`yoloHiddenFrame-${key}`).src = `${getYoloBaseUrl(key)}/mode/${mode}?t=${Date.now()}`;
+      });
+      setTimeout(() => keys.forEach(refreshYoloImage), 300);
+    }
+
+    async function fetchDetectionProgress() {
+      try {
+        const res = await fetch('/api/detection_progress/latest');
+        const data = await res.json();
+        const p = data.progress || {};
+        const pct = Math.max(0, Math.min(100, Math.round(Number(p.progress || 0) * 100)));
+        document.getElementById('detectStatus').textContent = p.message || '대기 중';
+        document.getElementById('detectRobot').textContent = p.robot_name || '-';
+        document.getElementById('detectLabel').textContent = p.label || '-';
+        document.getElementById('detectConfidence').textContent = p.confidence == null ? '-' : Number(p.confidence).toFixed(2);
+        document.getElementById('detectProgressText').textContent = `${pct}%`;
+        document.getElementById('detectProgressBar').style.width = `${pct}%`;
+        document.getElementById('confirmDetectionBtn').disabled = !p.ready;
+        document.getElementById('detect-label-kpi').innerHTML = `${p.label || '-'}<small>label</small>`;
+        document.getElementById('detect-progress-kpi').innerHTML = `${pct}<small>%</small>`;
+        document.getElementById('detect-robot-kpi').innerHTML = `${p.robot_name || '-'}<small>unit</small>`;
+      } catch (err) { document.getElementById('detectStatus').textContent = '게이지 API 연결 실패'; }
+    }
+
+    async function confirmDetection() {
+      const el = document.getElementById('confirm-result');
+      const btn = document.getElementById('confirmDetectionBtn');
+      try {
+        btn.disabled = true;
+        btn.textContent = '해체 방법 불러오는 중...';
+        el.textContent = '확정 결과를 서버에 전송하고 있습니다.';
+        const res = await fetch('/api/confirm_detection', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({}) });
+        const data = await res.json();
+
+        if (!res.ok || data.result === 'fail') {
+          el.textContent = data.message || '해체 방법 요청에 실패했습니다.';
+          return;
+        }
+
+        el.textContent = '해체 방법을 불러왔습니다.';
+        await fetchLatestNotice();
+        document.getElementById('method-card').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      } catch (err) {
+        el.textContent = err.message;
+      } finally {
+        btn.textContent = '확인 후 해체 방법 보기';
+        fetchDetectionProgress();
+      }
+    }
+
+    async function fetchLatestNotice() {
+      try {
+        const res = await fetch('/api/safety_notice/latest');
+        const data = await res.json();
+        const n = data.notice || {};
+        const empty = Object.keys(n).length === 0;
+        const noticeStatusEl = document.getElementById('noticeStatus');
+        noticeStatusEl.textContent = empty ? '대기 중' : '수신 완료';
+        noticeStatusEl.className = empty ? 'badge' : 'badge on';
+        document.getElementById('notice-kpi').innerHTML = `${empty ? 'WAIT' : 'OK'}<small>state</small>`;
+        document.getElementById('source').textContent = n.source || '-';
+        document.getElementById('robot').textContent = n.robot_name || '-';
+        document.getElementById('event').textContent = n.event_type || '-';
+        document.getElementById('label').textContent = n.label || '-';
+        document.getElementById('confidence').textContent = n.confidence == null ? '-' : Number(n.confidence).toFixed(2);
+        const box = document.getElementById('message');
+        box.textContent = empty ? '아직 표시할 해체 방법이 없습니다.' : (n.message || '');
+        box.className = 'message ' + (n.level === 'warning' ? 'warning' : n.level === 'caution' ? 'caution' : empty ? 'empty' : '');
+      } catch (err) { document.getElementById('noticeStatus').textContent = 'API 연결 실패'; }
+    }
+
+    async function sendUserReport() {
+      const text = document.getElementById('user-report-text').value.trim();
+      const el = document.getElementById('report-result');
+      if (!text) { alert('보고 내용을 입력하세요.'); return; }
+      try {
+        const res = await fetch('/api/user_report', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({robot_name: 'waffle1', text}) });
+        const data = await res.json();
+        el.textContent = JSON.stringify(data, null, 2);
+        fetchLatestNotice();
+      } catch (err) { el.textContent = err.message; }
+    }
+
+    updateActions();
+    updateFsmInputs();
+    refreshYoloImages();
+    fetchBoxes();
+    fetchLatestNotice();
+    fetchDetectionProgress();
+    async function fetchRobotStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        const count = data.active_count ?? 0;
+        document.getElementById('robot-count-kpi').innerHTML = `${count}<small>active</small>`;
+        document.getElementById('robot-count-pill').textContent = `${count} Units`;
+      } catch (_) {}
+    }
+    fetchRobotStatus();
+    setInterval(fetchRobotStatus, 3000);
+    setInterval(fetchBoxes, 20000);
+    setInterval(fetchLatestNotice, 10000);
+    setInterval(fetchDetectionProgress, 50000);
+  </script>
+  <script src="/static/map_gui.js"></script>
+</body>
+</html>

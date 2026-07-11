@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>ROScue 컨트롤 패널</title>
+</head>
+<body>
+    <h2>ROScue 컨트롤 패널</h2>
+
+    <!-- SLAM 지도 생성 -->
+    <fieldset>
+        <legend>SLAM 지도 생성 (Phase 0)</legend>
+        <label>로봇:
+            <select id="slam-robot">
+                <option value="pinky">pinky</option>
+            </select>
+        </label>
+        <button onclick="sendSlam('start')">SLAM 시작</button>
+        <button onclick="sendSlam('stop')">종료 </button>
+        <pre id="slam-result"></pre>
+    </fieldset>
+
+
+
+    <!-- 미션 제어 -->
+    <fieldset>
+        <legend>미션 제어 (자율 FSM)</legend>
+        <button onclick="sendMission('start')">시작</button>
+        <button onclick="sendMission('stop')">정지</button>
+        <button onclick="sendMission('pause')">일시정지</button>
+        <button onclick="sendMission('resume')">재개</button>
+        <pre id="mission-result"></pre>
+    </fieldset>
+
+    <!-- 수동 처리 완료 -->
+    <fieldset>
+        <legend>수동 처리 완료</legend>
+        <label>Box ID: <input id="box_id" placeholder="예: a3f2b1c4"></label>
+        <button onclick="sendManualDone()">처리 완료 전송</button>
+        <pre id="manual-result"></pre>
+    </fieldset>
+
+    <!-- Box 목록 -->
+    <fieldset>
+        <legend>Box 목록</legend>
+        <button onclick="fetchBoxes()">새로고침</button>
+        <table id="box-table" border="1" cellpadding="4" style="border-collapse:collapse; margin-top:6px;">
+            <thead>
+                <tr>
+                    <th>box_id</th><th>x</th><th>y</th>
+                    <th>status</th><th>발견 로봇</th><th>발견 시각</th>
+                </tr>
+            </thead>
+            <tbody id="box-tbody"></tbody>
+        </table>
+    </fieldset>
+
+    <!-- Box 수동 관리 (디버그) -->
+    <fieldset>
+        <legend>Box 수동 관리 (디버그)</legend>
+        <label>로봇:
+            <select id="boxmgr_robot">
+                <option>wf1</option>
+                <option>wf2</option>
+                <option>pinky</option>
+            </select>
+        </label>
+        <label>Box ID: <input id="boxmgr_id" placeholder="비우면 자동생성" style="width:120px"></label>
+        <label>x: <input id="boxmgr_x" type="number" step="0.1" placeholder="로봇 pose" style="width:80px"></label>
+        <label>y: <input id="boxmgr_y" type="number" step="0.1" placeholder="로봇 pose" style="width:80px"></label>
+        <button onclick="sendAddBox()">추가</button>
+        <button onclick="sendRemoveBox()">삭제</button>
+        <button onclick="sendResetBoxes()">전체 리셋</button>
+        <pre id="boxmgr-result"></pre>
+        <small>추가: 좌표 비우면 로봇 현재 pose 사용 / 삭제: Box ID 필요 / x·y는 둘 다 입력해야 적용</small>
+    </fieldset>
+
+    <!-- 개별 태스크 명령 -->
+    <fieldset>
+        <legend>개별 태스크 명령 (디버그)</legend>
+        <label>로봇:
+            <select id="robot_name">
+                <option>wf1</option>
+                <option>wf2</option>
+                <option>pinky</option>
+            </select>
+        </label>
+        <label>Task:
+            <select id="task_name" onchange="updateActions()">
+                <option value="navigation">navigation</option>
+                <option value="robot_omx_manual_control">robot_omx_manual_control</option>
+                <option value="robot_arm_pose_server">robot_arm_pose_server</option>
+                <option value="arm_pose">arm_pose</option>
+                <option value="yolo_mode">yolo_mode</option>
+            </select>
+        </label>
+        <label>Action:
+            <select id="action"></select>
+        </label>
+        <button onclick="sendCommand()">전송</button>
+        <pre id="command-result"></pre>
+    </fieldset>
+
+    <!-- FSM 강제 전이 (디버그) -->
+    <fieldset>
+        <legend>FSM 강제 전이 (디버그)</legend>
+        <label>로봇:
+            <select id="fsm_robot">
+                <option>wf1</option>
+                <option>wf2</option>
+                <option>pinky</option>
+            </select>
+        </label>
+        <label>전이:
+            <select id="fsm_action" onchange="updateFsmInputs()">
+                <option value="debug_idle">IDLE</option>
+                <option value="debug_explore">EXPLORE</option>
+                <option value="debug_yolo">YOLO_DEBUG</option>
+                <option value="debug_recover">RECOVER</option>
+                <option value="debug_pinky_task">PINKY_TASK (SLAM)</option>
+                <option value="debug_approach">APPROACH — box_id 필요</option>
+                <option value="debug_open_box_cover">OPEN_BOX_COVER — box_id 필요</option>
+                <option value="debug_box_scan">BOX_SCAN — box_id 필요</option>
+                <option value="debug_wait_partner">WAIT_PARTNER — box_id 필요</option>
+                <option value="debug_summon">SUMMON — 좌표 필요</option>
+                <option value="debug_dual_manual">DUAL_MANUAL — robot2 필요</option>
+                <option value="debug_arrived">robot_reached(arrived)</option>
+                <option value="debug_explosive_found">EXPLOSIVE_FOUND</option>
+            </select>
+        </label>
+        <span id="fsm-boxid-group">
+            Box ID: <input id="fsm_box_id" placeholder="예: a3f2b1c4" style="width:140px">
+        </span>
+        <span id="fsm-coord-group" style="display:none">
+            x: <input id="fsm_target_x" type="number" step="0.1" value="0.0" style="width:70px">
+            y: <input id="fsm_target_y" type="number" step="0.1" value="0.0" style="width:70px">
+        </span>
+        <span id="fsm-robot2-group" style="display:none">
+            Robot2: <select id="fsm_robot2">
+                <option>wf1</option>
+                <option>wf2</option>
+            </select>
+        </span>
+        <button onclick="sendDebugFsm()">강제 전이</button>
+        <pre id="fsm-result"></pre>
+    </fieldset>
+
+
+    <!-- 수동 조종 -->
+    <fieldset>
+        <legend>수동 조종 (Teleop) — 패널 클릭 시 해당 로봇 활성, 이전 로봇 자동 정지</legend>
+        <div style="display:flex; gap:16px;">
+            <div id="panel-0" class="teleop-panel">
+                <strong>pinky</strong><br>
+                <button onclick="activatePanel(0)">활성화</button>
+                <span id="status-0" style="color:gray"> 비활성</span>
+                <pre id="display-0" style="font-size:11px;margin:4px 0">W=전진 S=후진 A=좌 D=우
+Q=속도↑  Z=속도↓</pre>
+            </div>
+            <div id="panel-1" class="teleop-panel">
+                <strong>wf1</strong><br>
+                <button onclick="activatePanel(1)">활성화</button>
+                <span id="status-1" style="color:gray"> 비활성</span>
+                <pre id="display-1" style="font-size:11px;margin:4px 0">W=전진 S=후진 A=좌 D=우
+Q=속도↑  Z=속도↓</pre>
+            </div>
+            <div id="panel-2" class="teleop-panel">
+                <strong>wf2</strong><br>
+                <button onclick="activatePanel(2)">활성화</button>
+                <span id="status-2" style="color:gray"> 비활성</span>
+                <pre id="display-2" style="font-size:11px;margin:4px 0">W=전진 S=후진 A=좌 D=우
+Q=속도↑  Z=속도↓</pre>
+            </div>
+        </div>
+    </fieldset>
+    
+    <!-- 카메라 피드 -->
+    <fieldset>
+        <legend>카메라</legend>
+        <button onclick="refreshCameras()">새로고침</button>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:6px; align-items:flex-start;">
+            <div style="text-align:center;">
+                <strong>wf1 (14)</strong><br>
+                <img class="cam" src="http://192.168.0.14:5000/camera" alt="wf1 카메라"
+                     style="width:640px; height:480px; object-fit:contain; border:1px solid">
+            </div>
+            <div style="text-align:center;">
+                <strong>wf2 (15)</strong><br>
+                <img class="cam" src="http://192.168.0.15:5001/camera" alt="wf2 카메라"
+                     style="width:640px; height:480px; object-fit:contain; border:1px solid">
+            </div>
+            <div style="text-align:center;">
+                <strong>pinky (13)</strong><br>
+                <img class="cam" src="http://192.168.0.13:5002/camera" alt="pinky 카메라"
+                     style="width:320px; height:240px; object-fit:contain; border:1px solid">
+            </div>
+        </div>
+    </fieldset>
+
+    <script>
+        // ── 공통 유틸 ──────────────────────────────────────────────
+        const ACTION_MAP = {
+            navigation:               ['start', 'stop', 'restart'],
+            robot_omx_manual_control: ['start', 'stop'],
+            robot_arm_pose_server:    ['start', 'stop'],
+            arm_pose:                 ['HOME', 'CAMERA_VIEW', 'BOX_VIEW'],
+            yolo_mode:                ['BOX_DETECTION_MODEL', 'EXPLOSIVE_DETECTION_MODEL', 'OFF'],
+        };
+
+        function updateActions() {
+            const task = document.getElementById('task_name').value;
+            const sel  = document.getElementById('action');
+            sel.innerHTML = ACTION_MAP[task]
+                .map(a => `<option>${a}</option>`)
+                .join('');
+        }
+
+        async function callApi(url, body, resultId) {
+            const el = document.getElementById(resultId);
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const data = await resp.json();
+                el.textContent = (resp.ok ? '[OK] ' : '[FAIL] ') + data.message;
+            } catch (e) {
+                el.textContent = '[ERROR] ' + e.message;
+            }
+        }
+        function sendSlam(action) {
+            const robot = document.getElementById('slam-robot').value;
+            const resultEl = document.getElementById('slam-result');
+
+            if (action === 'start') {
+
+                if (robot === 'pinky') {
+                    if (activeIdx !== 0) {
+                        activatePanel(0); 
+                    }
+                    resultEl.textContent = ' Pinky  조종 모드';
+                } 
+            } else if (action === 'stop') {
+                // 강제 종료 시 수동 조작 완전히 끄기
+                _stopTeleop();
+                resultEl.textContent = '▶ 조종 모드가 종료';
+            }
+        }
+        // ── Teleop ────────────────────────────────────────────────
+        const ROBOT_LIST = ['pinky', 'wf1', 'wf2'];
+        const T_RATE  = 40;   // 20 Hz
+        const T_STEP  = 1.1;
+
+        let activeIdx   = -1;
+        let pressedKeys = new Set();
+        let teleopTimer = null;
+        let tLinear     = .1;
+        let tAngular    = .5;   
+
+        function activatePanel(idx) {
+            if (activeIdx === idx) {
+                // 같은 패널 재클릭 → 비활성
+                _stopTeleop();
+                return;
+            }
+            // 이전 패널 정지 명령 전송
+            if (activeIdx !== -1) {
+                _sendZero(ROBOT_LIST[activeIdx]);
+                _setUi(activeIdx, false);
+            }
+            activeIdx = idx;
+            pressedKeys.clear();
+            tLinear  = .2;
+            tAngular = 1.0;
+            _setUi(idx, true);
+            if (!teleopTimer) {
+                teleopTimer = setInterval(_tick, T_RATE);
+            }
+        }
+
+        function _stopTeleop() {
+            if (activeIdx !== -1) {
+                _sendZero(ROBOT_LIST[activeIdx]);
+                _setUi(activeIdx, false);
+            }
+            clearInterval(teleopTimer);
+            teleopTimer = null;
+            pressedKeys.clear();
+            activeIdx = -1;
+        }
+
+        function _tick() {
+            if (activeIdx === -1) return;
+            const robot = ROBOT_LIST[activeIdx];
+            let x  = 0.0;
+            let th = 0.0;
+            if (pressedKeys.has('w')) x  += 1.0;
+            if (pressedKeys.has('s')) x  -= 1.0;
+            if (pressedKeys.has('a')) th += 1.0;
+            if (pressedKeys.has('d')) th -= 1.0;
+            if (x < 0) th = -th;  // 후진 시 조향 보정
+            fetch('/api/teleop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ robot_name: robot, linear_x: x * tLinear, angular_z: th * tAngular }),
+            });
+            document.getElementById(`display-${activeIdx}`).textContent =
+                `held: ${[...pressedKeys].join('').toUpperCase() || '-'}\n` +
+                `linear.x  = ${(x  * tLinear ).toFixed(2)}\n` +
+                `angular.z = ${(th * tAngular).toFixed(2)}\n` +
+                `(speed ${tLinear.toFixed(2)} / turn ${tAngular.toFixed(2)})\n` +
+                `W=전진 S=후진 A=좌 D=우  Q=속도↑ Z=속도↓`;
+        }
+
+        function _sendZero(robot) {
+            fetch('/api/teleop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ robot_name: robot, linear_x: 0, angular_z: 0 }),
+            });
+        }
+
+        function _setUi(idx, active) {
+            const st = document.getElementById(`status-${idx}`);
+            st.textContent = active ? ' 활성' : ' 비활성';
+            st.style.color = active ? 'green' : 'gray';
+            if (!active) {
+                document.getElementById(`display-${idx}`).textContent =
+                    'W=전진 S=후진 A=좌 D=우\nQ=속도↑  Z=속도↓';
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (activeIdx === -1) return;
+            const k = e.key.toLowerCase();
+            if (['w','a','s','d'].includes(k)) {
+                e.preventDefault();
+                pressedKeys.add(k);
+            }
+            if (k === 'q') { tLinear *= T_STEP; tAngular *= T_STEP; }
+            if (k === 'z') { tLinear /= T_STEP; tAngular /= T_STEP; }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            pressedKeys.delete(e.key.toLowerCase());
+        });
+
+        // ── 기타 명령 ─────────────────────────────────────────────
+        function sendMission(action) {
+            callApi('/api/command', { task_name: 'mission', action }, 'mission-result');
+        }
+
+        function sendManualDone() {
+            const box_id = document.getElementById('box_id').value.trim();
+            if (!box_id) { alert('Box ID를 입력하세요.'); return; }
+            callApi('/api/command', { task_name: 'manual_done', box_id }, 'manual-result');
+        }
+
+        function sendCommand() {
+            callApi('/api/command', {
+                robot_name: document.getElementById('robot_name').value,
+                task_name:  document.getElementById('task_name').value,
+                action:     document.getElementById('action').value,
+            }, 'command-result');
+        }
+
+        const FSM_NEEDS_BOX    = new Set(['debug_approach', 'debug_open_box_cover', 'debug_box_scan', 'debug_wait_partner']);
+        const FSM_NEEDS_COORD  = new Set(['debug_summon']);
+        const FSM_NEEDS_ROBOT2 = new Set(['debug_dual_manual']);
+
+        function updateFsmInputs() {
+            const action = document.getElementById('fsm_action').value;
+            document.getElementById('fsm-boxid-group').style.display  = FSM_NEEDS_BOX.has(action)    ? '' : 'none';
+            document.getElementById('fsm-coord-group').style.display  = FSM_NEEDS_COORD.has(action)  ? '' : 'none';
+            document.getElementById('fsm-robot2-group').style.display = FSM_NEEDS_ROBOT2.has(action) ? '' : 'none';
+        }
+
+        function sendDebugFsm() {
+            const robot  = document.getElementById('fsm_robot').value;
+            const action = document.getElementById('fsm_action').value;
+            const body   = { robot_name: robot, task_name: action, action, box_id: '' };
+
+            if (FSM_NEEDS_BOX.has(action)) {
+                body.box_id = document.getElementById('fsm_box_id').value.trim();
+            } else if (FSM_NEEDS_COORD.has(action)) {
+                const x = parseFloat(document.getElementById('fsm_target_x').value);
+                const y = parseFloat(document.getElementById('fsm_target_y').value);
+                body.box_id = `${x},${y}`;   // 코디네이터 summon 핸들러에서 "x,y" 파싱
+            } else if (FSM_NEEDS_ROBOT2.has(action)) {
+                body.box_id = document.getElementById('fsm_robot2').value;  // robot2 이름
+            }
+
+            callApi('/api/command', body, 'fsm-result');
+        }
+
+        async function fetchBoxes() {
+            try {
+                const resp  = await fetch('/api/boxes');
+                const data  = await resp.json();
+                const tbody = document.getElementById('box-tbody');
+                tbody.innerHTML = data.boxes.map(b =>
+                    `<tr>
+                        <td>${b.box_id}</td>
+                        <td>${b.pose.x.toFixed(2)}</td>
+                        <td>${b.pose.y.toFixed(2)}</td>
+                        <td>${b.status}</td>
+                        <td>${b.discovered_by}</td>
+                        <td>${new Date(b.first_stamp * 1000).toLocaleTimeString()}</td>
+                    </tr>`
+                ).join('');
+            } catch (e) {
+                document.getElementById('box-tbody').innerHTML =
+                    `<tr><td colspan="6" style="color:red">[ERROR] ${e.message}</td></tr>`;
+            }
+        }
+
+        // ── Box 수동 관리 ─────────────────────────────────────────
+        async function sendAddBox() {
+            const robot = document.getElementById('boxmgr_robot').value;
+            const id    = document.getElementById('boxmgr_id').value.trim();
+            const x     = document.getElementById('boxmgr_x').value.trim();
+            const y     = document.getElementById('boxmgr_y').value.trim();
+            // 좌표 둘 다 입력 시 "id,x,y" (id 비면 ",x,y" → 백엔드 자동생성), 아니면 "id" (로봇 pose 사용)
+            const box_id = (x !== '' && y !== '') ? `${id},${x},${y}` : id;
+            await callApi('/api/command',
+                { robot_name: robot, task_name: 'debug_add_box', action: '', box_id }, 'boxmgr-result');
+            fetchBoxes();
+        }
+
+        async function sendRemoveBox() {
+            const id = document.getElementById('boxmgr_id').value.trim();
+            if (!id) { alert('삭제할 Box ID를 입력하세요.'); return; }
+            await callApi('/api/command',
+                { task_name: 'debug_remove_box', box_id: id }, 'boxmgr-result');
+            fetchBoxes();
+        }
+
+        async function sendResetBoxes() {
+            if (!confirm('박스 레지스트리를 전체 삭제합니다. 계속할까요?')) return;
+            await callApi('/api/command', { task_name: 'debug_reset_boxes' }, 'boxmgr-result');
+            fetchBoxes();
+        }
+
+        // ── 카메라 ────────────────────────────────────────────────
+        function refreshCameras() {
+            document.querySelectorAll('img.cam').forEach(img => {
+                const base = img.src.split('?')[0];   // 기존 캐시버스터 제거
+                img.src = `${base}?t=${Date.now()}`;   // 새 쿼리로 강제 재로드
+            });
+        }
+
+        updateActions();
+        updateFsmInputs();
+    </script>
+</body>
+</html>

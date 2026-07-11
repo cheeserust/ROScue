@@ -1,0 +1,6 @@
+string robot_name
+string stream          # 'wrist_cam'
+string mode            # BOX_DETECTION_MODEL | EXPLOSIVE_DETECTION_MODEL | OFF
+---
+bool accepted
+string message
