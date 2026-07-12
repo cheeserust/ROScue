@@ -7,7 +7,7 @@
 
 ## 1. 왜 namespace 방식에서 domain_bridge 방식으로 바꿨는가
 
-**중요한 사실관계부터:** namespace 방식이 "원리적으로 불가능"해서 바꾼 게 아니다.
+**사실관계부터:** namespace 방식이 "원리적으로 불가능"해서 바꾼 게 아니다.
 namespace 버전의 실제 실패 원인으로 진단됐던 것은 namespace 자체가 아니라
 **실제 localization(AMCL)을 안 돌리고 static TF로 map→odom을 가짜로 메운 것**이었다.
 그 위에 누적된 복잡도와 코드 꼬임 때문에, 디버깅을 계속하는 것보다
@@ -138,14 +138,3 @@ ros2 run roscue_nav nearest_point_patrol
 ros2 run domain_bridge domain_bridge <bridge yaml>   # 정방향 2 + 역방향 2
 ros2 run roscue_dispatch dispatcher
 ```
-
----
-
-## 5. 남은 작업 체크리스트
-
-- [ ] burger 실주행 중 CPU 부하 측정 (Nav2 노드 포함된 top 캡처)
-- [ ] SLAM 갱신 도중 주행 안정성 실증 (AMCL 흔들림 관찰)
-- [ ] waffle 복제: ros-jazzy-navigation2 설치 + 동일 검증
-- [ ] 역방향 bridge (/amcl_pose, 11→10 / 12→10)
-- [ ] dispatcher: nearest-robot 선택 + 로봇별 target_point 분배
-- [ ] 패키지화 (roscue_nav, roscue_dispatch) — 데모 파이프라인 검증 후
