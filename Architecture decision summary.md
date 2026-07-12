@@ -1,0 +1,142 @@
+# 아키텍처 결정 요약 — namespace → domain_bridge 전환
+
+> ROScue 다중 로봇 폭발물 처리 시스템 / ROS2 Jazzy
+> Pinky(SLAM, 좌표 송신) + Burger/Waffle(자율주행 출동)
+
+---
+
+## 1. 왜 namespace 방식에서 domain_bridge 방식으로 바꿨는가
+
+**사실관계부터:** namespace 방식이 "원리적으로 불가능"해서 바꾼 게 아니다.
+namespace 버전의 실제 실패 원인으로 진단됐던 것은 namespace 자체가 아니라
+**실제 localization(AMCL)을 안 돌리고 static TF로 map→odom을 가짜로 메운 것**이었다.
+그 위에 누적된 복잡도와 코드 꼬임 때문에, 디버깅을 계속하는 것보다
+**로봇별로 깨끗하게 격리되는 구조로 재설계**하는 쪽을 선택한 것이다.
+
+전환으로 얻은 것:
+
+| 항목 | namespace 방식 | domain_bridge 방식 (현재) |
+|---|---|---|
+| 로봇 내부 구성 | 모든 frame/topic에 prefix 필요 (`wf2/odom` 등) | **stock TB3 그대로** — prefix 작업 전무 |
+| yaml 파라미터 | 로봇별로 frame 이름 전부 수정 | base_footprint, odom 등 기본값 유지 |
+| 격리 수준 | 같은 DDS 공간, 이름으로만 구분 | DDS 레벨 완전 격리 — 실수로 섞일 수 없음 |
+| 경계를 넘는 데이터 | 모든 것이 한 공간에 공존 | **명시적으로 bridge에 등록한 topic만** 통과 |
+| 디버깅 | 어느 로봇 topic인지 prefix로 추적 | domain 바꿔 접속하면 그 로봇 것만 보임 |
+
+---
+
+## 2. namespace 방식에서 가능성 있던 문제들
+
+실측으로 확정된 것과 위험 요소로 식별된 것을 구분한다.
+
+**확정된 실패 원인:**
+- `navigation_launch.py`만 실행해 **AMCL/map_server 미실행** → map→odom을 줄 주체가 없음 → `static_transform_publisher`로 0,0,0 고정 = localization 포기 선언. lifecycle은 겉으로만 충족돼 goal rejected로 발현
+- `tb3`/`wf2` namespace 혼재 + odd/even 분배 등 누적 cruft로 launch·yaml·디스패처가 엉킴
+
+**위험 요소로 식별됐던 것 (잠재 문제):**
+- `PushRosNamespace` + `RewrittenYaml root_key` 동시 사용 시 **이중 namespace** (`tb3/tb3/...`)
+- `frame_prefix` 외부 SetParameter와 state_publisher 내부 prefix 처리의 **중복 prefix 충돌**
+- 로봇별 yaml마다 frame 이름을 손으로 바꿔야 해서 로봇 추가 시마다 **수정 표면적이 큼**
+- 모든 로봇의 `/scan`, TF, `/cmd_vel`이 한 DDS 공간에 공존 → remap 하나 빠뜨리면 **조용한 crosstalk**
+
+---
+
+## 3. 새 domain bridge 방식 vs 맨 처음 domain 시도 — 무엇이 다른가
+
+같은 "domain 분리"지만 **Nav2가 어디서 도는지**가 정반대다. 이게 성패를 갈랐다.
+
+| | 시도 1 (실패, 폐기) | 현재 방식 (검증 완료) |
+|---|---|---|
+| Nav2 위치 | **PC에서 실행** | **각 로봇 Pi 온보드** |
+| bridge가 나르는 것 | Nav2를 먹여 살릴 모든 것 (시도) | **topic 4개뿐**: /map, /map_metadata, /target_point, /initialpose |
+| 실패/성공 원인 | 센서·TF가 domain에 갇혀 Nav2가 굶음 → lifecycle self-lock | Nav2가 센서와 같은 domain → 굶을 게 없음 |
+| goal 전달 | (해결 못함 — action은 bridge 불가) | 좌표를 topic으로 bridge → **온보드 패트롤 노드가 로컬 action 호출** |
+| Wi-Fi 의존 | 제어 루프 전체가 무선 | 좌표·맵 전달만 무선, 제어 루프는 로봇 내부 |
+
+핵심 교훈: **domain 분리 자체가 문제였던 게 아니라, Nav2와 데이터 소스(센서/TF)를 분리한 게 문제였다.**
+
+---
+
+## 4. 최종 구조 (waffle 포함 + 패키지화 완료 가정)
+
+### 4.1 Domain 배치
+
+```
+Domain 10 : Pinky + PC (관제)
+Domain 11 : Burger
+Domain 12 : Waffle
+```
+
+### 4.2 파일/패키지 트리
+
+```
+PC (kj, domain 10)
+~/ROS2_project_ws/
+├── src/
+│   └── roscue_dispatch/                  # [패키지] PC측 관제
+│       ├── package.xml / setup.py
+│       ├── roscue_dispatch/
+│       │   ├── dispatcher.py             # clicked_point_to_target.py의 성장형
+│       │   │                             #   nearest-robot 선택 → /burger/target_point
+│       │   │                             #   또는 /waffle/target_point로 분배
+│       │   └── clicked_point_saver.py    # (선택) 좌표 기록
+│       └── bridge/
+│           ├── pc10_to_burger11.yaml     # /map /map_metadata /target_point /initialpose
+│           ├── pc10_to_waffle12.yaml     # 위와 동일, to_domain: 12
+│           ├── burger11_to_pc10.yaml     # 역방향: /amcl_pose (디스패처 거리계산·RViz 관제)
+│           └── waffle12_to_pc10.yaml     # 역방향 동일
+└── (dashboard_server.py — HTTP, domain 무관)
+
+Pinky (domain 10) — 기존 패키지 유지
+~/ROS2_project_ws/pinky_pro/
+├── pinky_bringup / pinky_navigation      # bringup, SLAM
+│   └── map_building.launch.xml           # /pinky remap 제거판 (plain /map)
+├── teleop_pygame.py
+└── pinky_camera_server.py                # HTTP 스트리밍
+
+Burger Pi (domain 11)
+~/turtlebot3_ws/src/
+└── roscue_nav/                           # [패키지] 로봇측 — burger/waffle 공용
+    ├── package.xml / setup.py
+    ├── launch/
+    │   └── navigation2_no_map_server.launch.py
+    ├── param/
+    │   ├── burger.yaml                   # BT xml 절대경로 버전
+    │   └── waffle.yaml
+    └── roscue_nav/
+        └── nearest_point_patrol.py       # 좌표 큐 + nearest 선택 + 로컬 action
+
+Waffle Pi (domain 12)
+~/turtlebot3_ws/src/
+└── roscue_nav/                           # 동일 패키지 git clone
+                                          # 실행 시 params_file만 waffle.yaml 지정
+```
+
+### 4.3 데이터 흐름 (운영 시)
+
+```
+[Pinky SLAM] --/map--> [bridge 10→11] --> [Burger AMCL/costmap]
+                  └---> [bridge 10→12] --> [Waffle AMCL/costmap]
+
+[RViz 클릭] --/clicked_point--> [dispatcher(PC)]
+    dispatcher: 양 로봇 /amcl_pose(역방향 bridge) 비교 → 최근접 로봇 선택
+    --/burger/target_point--> [bridge 10→11] --> [burger patrol] → NavigateToPose(로컬)
+    --/waffle/target_point--> [bridge 10→12] --> [waffle patrol] → NavigateToPose(로컬)
+
+[RViz 2D Pose Estimate] --/initialpose--> bridge → 각 로봇 AMCL
+```
+
+### 4.4 실행 명령 (패키지화 이후)
+
+```bash
+# 각 로봇 (burger 예)
+ros2 launch roscue_nav navigation2_no_map_server.launch.py \
+  params_file:=$(ros2 pkg prefix roscue_nav)/share/roscue_nav/param/burger.yaml
+ros2 run roscue_nav nearest_point_patrol
+
+# PC
+ros2 run domain_bridge domain_bridge <bridge yaml>   # 정방향 2 + 역방향 2
+ros2 run roscue_dispatch dispatcher
+```
+
+---
