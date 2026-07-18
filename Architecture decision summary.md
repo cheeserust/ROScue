@@ -7,7 +7,7 @@
 
 ## 1. 왜 namespace 방식에서 domain_bridge 방식으로 바꿨는가
 
-**사실관계부터:** namespace 방식이 "원리적으로 불가능"해서 바꾼 게 아니다.
+namespace 방식이 "원리적으로 불가능"해서 바꾼 게 아니다.
 namespace 버전의 실제 실패 원인으로 진단됐던 것은 namespace 자체가 아니라
 **실제 localization(AMCL)을 안 돌리고 static TF로 map→odom을 가짜로 메운 것**이었다.
 그 위에 누적된 복잡도와 코드 꼬임 때문에, 디버깅을 계속하는 것보다
@@ -49,25 +49,25 @@ namespace 버전의 실제 실패 원인으로 진단됐던 것은 namespace 자
 |---|---|---|
 | Nav2 위치 | **PC에서 실행** | **각 로봇 Pi 온보드** |
 | bridge가 나르는 것 | Nav2를 먹여 살릴 모든 것 (시도) | **topic 4개뿐**: /map, /map_metadata, /target_point, /initialpose |
-| 실패/성공 원인 | 센서·TF가 domain에 갇혀 Nav2가 굶음 → lifecycle self-lock | Nav2가 센서와 같은 domain → 굶을 게 없음 |
+| 실패/성공 원인 | 센서·TF가 로봇 domain에 갇혀 **Nav2가 필요한 데이터를 아예 수신하지 못함** → lifecycle self-lock | Nav2가 센서·TF와 같은 domain → 굶을 게 없음 |
 | goal 전달 | (해결 못함 — action은 bridge 불가) | 좌표를 topic으로 bridge → **온보드 패트롤 노드가 로컬 action 호출** |
-| Wi-Fi 의존 | 제어 루프 전체가 무선 | 좌표·맵 전달만 무선, 제어 루프는 로봇 내부 |
+| Wi-Fi 의존 | 제어 루프가 무선 링크 너머의 데이터에 의존 | 좌표·맵 전달만 무선, 제어 루프는 로봇 내부에서 완결 |
 
 핵심 교훈: **domain 분리 자체가 문제였던 게 아니라, Nav2와 데이터 소스(센서/TF)를 분리한 게 문제였다.**
 
+### 3.1 실패 메커니즘
+
+1. Nav2를 PC domain에서 실행하고, 센서(`/scan`)와 TF는 로봇 domain에 남아 있었다.
+2. domain은 DDS 레벨에서 격리되므로, bridge에 명시적으로 등록되지 않은 topic은 **경계를 넘지 못한다.**
+3. 따라서 Nav2는 데이터를 늦게 받은 것이 아니라 **아예 받지 못했다.**
+4. AMCL·costmap이 입력 없이 활성화되지 못하고, lifecycle_manager가 self-lock 상태로 정체됐다.
+
+즉 원인은 데이터 부재(topic 미도달) 이다.
+
 ---
 
-## 4. 최종 구조 (waffle 포함 + 패키지화 완료 가정)
-
-### 4.1 Domain 배치
-
-```
-Domain 10 : Pinky + PC (관제)
-Domain 11 : Burger
-Domain 12 : Waffle
-```
-
-### 4.2 파일/패키지 트리
+## 4. 최종 구조
+### 4.1 파일/패키지 트리
 
 ```
 PC (kj, domain 10)
