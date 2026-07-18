@@ -1,0 +1,55 @@
+name: pinky13_to_pc10_bridge
+
+from_domain: 13
+to_domain: 10
+
+topics:
+  map:
+    type: nav_msgs/msg/OccupancyGrid
+    remap: pinky/map
+    qos:
+      reliability: reliable
+      durability: transient_local
+      history: keep_last
+      depth: 1
+
+  map_metadata:
+    type: nav_msgs/msg/MapMetaData
+    remap: pinky/map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
+      history: keep_last
+      depth: 1
+
+  map_updates:
+    type: map_msgs/msg/OccupancyGridUpdate
+    remap: pinky/map_updates
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 10
+
+  clicked_point:
+    type: geometry_msgs/msg/PointStamped
+    remap: pinky/clicked_point
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 100
+
+  # PC(10) → Pinky(13): pygame teleop
+  # PC측 teleop 노드가 /pinky/cmd_vel 로 발행해야 함
+  # (현재 teleop_pygame.py는 plain cmd_vel 발행 → 수정 필요)
+  pinky/cmd_vel:
+    type: geometry_msgs/msg/Twist
+    remap: /cmd_vel
+    from_domain: 10
+    to_domain: 13
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 10
