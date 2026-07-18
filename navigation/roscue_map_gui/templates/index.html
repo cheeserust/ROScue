@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROScue Map GUI</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+    <h2>ROScue Map GUI</h2>
+    <div id="connection-status" class="status-badge disconnected">연결 대기</div>
+</header>
+
+<main class="layout">
+    <section class="map-panel">
+        <div class="toolbar">
+            <button id="mode-publish" class="active">Publish Point</button>
+            <button id="view-reset">화면 맞춤</button>
+            <label><input type="checkbox" id="show-clicked" checked> publish point</label>
+            <label><input type="checkbox" id="show-random" checked> random point</label>
+            <label><input type="checkbox" id="show-completed" checked> completed</label>
+            <label><input type="checkbox" id="show-robots" checked> WF 위치</label>
+        </div>
+
+        <div id="map-wrapper">
+            <canvas id="map-canvas"></canvas>
+            <div id="map-empty">/pinky/map 수신 대기 중</div>
+        </div>
+
+        <div class="legend">
+            <span><i class="dot clicked"></i>Publish Point</span>
+            <span><i class="dot random"></i>Random Point</span>
+            <span><i class="dot navigating"></i>Navigating/Waiting</span>
+            <span><i class="dot completed"></i>Completed</span>
+            <span><i class="tri wf1"></i>WF1</span>
+            <span><i class="tri wf2"></i>WF2</span>
+        </div>
+    </section>
+
+    <aside class="side-panel">
+        <fieldset>
+            <legend>실행 정보</legend>
+            <dl class="info-grid">
+                <dt>ROS_DOMAIN_ID</dt><dd id="ros-domain">-</dd>
+                <dt>Map Topic</dt><dd id="map-topic">-</dd>
+                <dt>Clicked Topic</dt><dd id="clicked-topic">-</dd>
+                <dt>DB</dt><dd id="db-status">-</dd>
+            </dl>
+        </fieldset>
+
+        <fieldset>
+            <legend>마우스 좌표</legend>
+            <div>map x: <strong id="mouse-x">-</strong></div>
+            <div>map y: <strong id="mouse-y">-</strong></div>
+            <div class="hint">지도 클릭 시 /pinky/clicked_point가 발행됩니다.</div>
+        </fieldset>
+
+        <fieldset>
+            <legend>지도 상태</legend>
+            <div>크기: <strong id="map-size">-</strong></div>
+            <div>해상도: <strong id="map-resolution">-</strong></div>
+            <div>origin: <strong id="map-origin">-</strong></div>
+        </fieldset>
+
+        <fieldset>
+            <legend>좌표 표시 개수</legend>
+            <div>Publish Point: <strong id="clicked-count">0</strong></div>
+            <div>Random Point: <strong id="random-count">0</strong></div>
+            <div>Completed: <strong id="completed-count">0</strong></div>
+        </fieldset>
+
+        <fieldset>
+            <legend>로봇 현재 위치</legend>
+            <div class="robot-card" id="wf1-card">
+                <strong>WF1</strong>
+                <span id="wf1-pose">pose 대기</span>
+            </div>
+            <div class="robot-card" id="wf2-card">
+                <strong>WF2</strong>
+                <span id="wf2-pose">pose 대기</span>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>최근 동작</legend>
+            <pre id="log-box"></pre>
+        </fieldset>
+    </aside>
+</main>
+
+<script src="/static/map_gui.js"></script>
+</body>
+</html>
